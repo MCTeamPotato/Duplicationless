@@ -1,0 +1,13 @@
+modLoader = "javafml"
+loaderVersion = "[36,)"
+#issueTrackerURL = ""
+license = "MIT"
+
+[[mods]]
+modId = "duplicationless"
+version = "${version}"
+displayName = "Duplicationless"
+authors = "Kall"
+description = '''
+'''
+#logoFile = ""
