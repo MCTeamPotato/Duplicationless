@@ -10,8 +10,9 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import me.kall.duplicationless.event.EntityChunkChangeEvent;
-import me.kall.duplicationless.ext.IEntityType;
+import me.kall.duplicationless.ext.RegistryEntry;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -20,6 +21,7 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
 import net.minecraftforge.event.server.ServerAboutToStartEvent;
+import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.IEventBus;
 import org.apache.logging.log4j.LogManager;
@@ -30,86 +32,83 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
 
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 public final class EntityTracker {
     private static final Logger LOGGER = LogManager.getLogger(EntityTracker.class);
     private static final Object2ObjectMap<ResourceLocation, Long2ObjectMap<EntityStorage>> ENTITIES = new Object2ObjectOpenHashMap<>();
-    private static final ConcurrentLinkedQueue<Runnable> TASKS = new ConcurrentLinkedQueue<>();
-    private static final ConcurrentHashMap<ResourceLocation, Predicate<Entity>> FILTERS = new ConcurrentHashMap<>();
-    private static final Object2ObjectMap<ResourceLocation, Predicate<Entity>> FINAL_FILTERS = new Object2ObjectOpenHashMap<>();
-    private static boolean filterFrozen;
+    private static final Object2ObjectMap<ResourceLocation, Predicate<Entity>> FILTERS = new Object2ObjectOpenHashMap<>();
+    private static final ConcurrentLinkedQueue<Runnable> UPDATE_TASKS = new ConcurrentLinkedQueue<>();
+    private static final int COUNT_INTERVAL = 20 * 60 * 30;
 
     private EntityTracker() {}
 
-    public static void filter(ResourceLocation filterId, Predicate<Entity> filter) {
-        if (filterFrozen) throw new UnsupportedOperationException("EntityTracker filter registry should be done before server starting!");
-        FILTERS.put(filterId, filter);
+    public static final class EntityFilterRegistryEvent extends Event {
+        private final MinecraftServer server;
+
+        private EntityFilterRegistryEvent(MinecraftServer server) {
+            this.server = server;
+        }
+
+        public void register(ResourceLocation filterId, Predicate<Entity> filter) {
+            this.server.execute(() -> {
+                if (FILTERS.containsKey(filterId)) throw new RuntimeException("[EntityTracker] Duplicate filter ID detected: " + filterId.toString() + ".");
+                FILTERS.put(filterId, filter);
+            });
+        }
     }
 
     public static @NotNull @UnmodifiableView IntSet getEntities(@NotNull ServerLevel level, long chunkPos) {
-        if (!level.getServer().isSameThread()) throw new UnsupportedOperationException("EntityTracker is only available on the server thread!");
-
-        Long2ObjectMap<EntityStorage> chunks = ENTITIES.get(level.dimension().location());
-        if (chunks == null || chunks.isEmpty()) return IntSets.emptySet();
-
-        EntityStorage entityStorage = chunks.get(chunkPos);
-        if (entityStorage == null || entityStorage.entities == null || entityStorage.entities.isEmpty()) return IntSets.emptySet();
-
-        return IntSets.unmodifiable(entityStorage.entities);
+        return getInternal(level, chunkPos, entityStorage -> entityStorage.entities);
     }
 
     public static @NotNull @UnmodifiableView IntSet getEntities(@NotNull ServerLevel level, long chunkPos, EntityType<?> type) {
-        if (!level.getServer().isSameThread()) throw new UnsupportedOperationException("EntityTracker is only available on the server thread!");
-
-        Long2ObjectMap<EntityStorage> chunks = ENTITIES.get(level.dimension().location());
-        if (chunks == null || chunks.isEmpty()) return IntSets.emptySet();
-
-        EntityStorage entityStorage = chunks.get(chunkPos);
-        if (entityStorage == null || entityStorage.entitiesByType == null) return IntSets.emptySet();
-
-        ResourceLocation registryName = ((IEntityType) type).registry$getName();
-        if (registryName.equals(IEntityType.NONE)) return IntSets.emptySet();
-
-        IntSet entitiesByType = entityStorage.entitiesByType.get(registryName);
-        if (entitiesByType == null || entitiesByType.isEmpty()) return IntSets.emptySet();
-
-        return IntSets.unmodifiable(entitiesByType);
+        return getInternal(level, chunkPos, entityStorage -> {
+            ResourceLocation id = ((RegistryEntry)type).registry$getName();
+            if (id.equals(RegistryEntry.NONE)) return null;
+            if (entityStorage.entitiesByType == null) return null;
+            return entityStorage.entitiesByType.get(id);
+        });
     }
 
     public static @NotNull @UnmodifiableView IntSet getEntities(@NotNull ServerLevel level, long chunkPos, ResourceLocation filter) {
+        return getInternal(level, chunkPos, entityStorage -> entityStorage.entitiesByFilter == null ? null : entityStorage.entitiesByFilter.get(filter));
+    }
+
+    private static @NotNull @UnmodifiableView IntSet getInternal(@NotNull ServerLevel level, long chunkPos, Function<EntityStorage, @Nullable IntSet> extractor) {
         if (!level.getServer().isSameThread()) throw new UnsupportedOperationException("EntityTracker is only available on the server thread!");
 
         Long2ObjectMap<EntityStorage> chunks = ENTITIES.get(level.dimension().location());
         if (chunks == null || chunks.isEmpty()) return IntSets.emptySet();
 
-        EntityStorage entityStorage = chunks.get(chunkPos);
-        if (entityStorage == null || entityStorage.entitiesByFilter == null) return IntSets.emptySet();
+        EntityStorage storage = chunks.get(chunkPos);
+        if (storage == null) return IntSets.emptySet();
 
-        IntSet filtered = entityStorage.entitiesByFilter.get(filter);
-        if (filtered == null || filtered.isEmpty()) return IntSets.emptySet();
+        IntSet set = extractor.apply(storage);
+        if (set == null || set.isEmpty()) return IntSets.emptySet();
 
-        return IntSets.unmodifiable(filtered);
+        return IntSets.unmodifiable(set);
     }
 
     private static void update(@NotNull Entity entity, @NotNull ServerLevel level, boolean add) {
         final long chunkPos = entity.chunkPosition().toLong();
         final ResourceLocation dim = level.dimension().location();
         final int id = entity.getId();
-        final ResourceLocation entityType = ((IEntityType) entity.getType()).registry$getName();
-        boolean isNone = entityType.equals(IEntityType.NONE);
-        ObjectList<ResourceLocation> updatable = null;
-        for (Map.Entry<ResourceLocation, Predicate<Entity>> entry : FINAL_FILTERS.entrySet()) {
+        final ResourceLocation entityType = ((RegistryEntry) entity.getType()).registry$getName();
+        boolean isNone = entityType.equals(RegistryEntry.NONE);
+        ObjectList<ResourceLocation> matched = null;
+        for (Map.Entry<ResourceLocation, Predicate<Entity>> entry : FILTERS.entrySet()) {
             if (entry.getValue().test(entity)) {
-                if (updatable == null) updatable = new ObjectArrayList<>();
-                updatable.add(entry.getKey());
+                if (matched == null) matched = new ObjectArrayList<>();
+                matched.add(entry.getKey());
             }
         }
 
-        ObjectList<ResourceLocation> filters = updatable;
-        TASKS.add(() -> {
+        final ObjectList<ResourceLocation> filters = matched;
+
+        UPDATE_TASKS.add(() -> {
             Long2ObjectMap<EntityStorage> chunks = ENTITIES.computeIfAbsent(dim, key -> new Long2ObjectOpenHashMap<>());
             EntityStorage entityStorage = chunks.computeIfAbsent(chunkPos, key -> new EntityStorage());
 
@@ -130,20 +129,15 @@ public final class EntityTracker {
         IEventBus bus = MinecraftForge.EVENT_BUS;
         bus.addListener(EventPriority.LOWEST, EntityTracker::onJoin);
         bus.addListener(EntityTracker::onLeave);
-        bus.addListener(EntityTracker::onUpdatePre);
-        bus.addListener(EntityTracker::onUpdatePost);
+        bus.addListener(EntityTracker::beforeChunkChange);
+        bus.addListener(EntityTracker::afterChunkChange);
         bus.addListener(EntityTracker::onTick);
         bus.addListener(EntityTracker::onServerStart);
         LOGGER.info("[EntityTracker] Initialized successfully.");
     }
 
     private static void onServerStart(@NotNull ServerAboutToStartEvent event) {
-        event.getServer().execute(() -> {
-            filterFrozen = true;
-            FINAL_FILTERS.putAll(FILTERS);
-            FILTERS.clear();
-            LOGGER.info("[EntityTracker] Entity Filters Registry is now frozen.");
-        });
+        MinecraftForge.EVENT_BUS.post(new EntityFilterRegistryEvent(event.getServer()));
     }
 
     private static void onJoin(@NotNull EntityJoinLevelEvent event) {
@@ -161,14 +155,14 @@ public final class EntityTracker {
         }
     }
 
-    private static void onUpdatePre(EntityChunkChangeEvent.@NotNull Before event) {
+    private static void beforeChunkChange(EntityChunkChangeEvent.@NotNull Before event) {
         Entity entity = event.getEntity();
         if (entity.level() instanceof ServerLevel level) {
             update(entity, level, false);
         }
     }
 
-    private static void onUpdatePost(EntityChunkChangeEvent.@NotNull After event) {
+    private static void afterChunkChange(EntityChunkChangeEvent.@NotNull After event) {
         Entity entity = event.getEntity();
         if (entity.level() instanceof ServerLevel level) {
             update(entity, level, true);
@@ -177,11 +171,28 @@ public final class EntityTracker {
 
     private static void onTick(TickEvent.@NotNull ServerTickEvent event) {
         if (event.phase.equals(TickEvent.Phase.START)) {
-            event.getServer().execute(() -> {
-                Runnable task;
-                while ((task = EntityTracker.TASKS.poll()) != null) task.run();
-            });
+            Runnable task;
+            while ((task = EntityTracker.UPDATE_TASKS.poll()) != null) task.run();
+
+            if (event.getServer().getTickCount() % COUNT_INTERVAL == 0) {
+                LOGGER.info("[EntityTracker] The number of loading entities in your server: {}~", count());
+                LOGGER.info("[EntityTracker] This count message appears per {} minutes", COUNT_INTERVAL / 20 / 60);
+            }
         }
+    }
+
+    private static int count() {
+        int count = 0;
+
+        for (Long2ObjectMap<EntityStorage> chunks : ENTITIES.values()) {
+            for (EntityStorage entityStorage : chunks.values()) {
+                if (entityStorage.entities != null) {
+                    count += entityStorage.entities.size();
+                }
+            }
+        }
+
+        return count;
     }
 
     private static final class EntityStorage {
@@ -190,10 +201,10 @@ public final class EntityTracker {
         @Nullable Object2ObjectMap<ResourceLocation, IntSet> entitiesByFilter;
 
         boolean isEmpty() {
-            return (this.entities == null || this.entities.isEmpty()) && (this.entitiesByType == null || this.entitiesByType.isEmpty()) && (this.entitiesByFilter == null || this.entitiesByFilter.isEmpty());
+            return this.entities == null && this.entitiesByType == null && this.entitiesByFilter == null;
         }
 
-        void add(int entityId, ResourceLocation entityType, boolean isNone, @Nullable ObjectList<ResourceLocation> updatable) {
+        void add(int entityId, ResourceLocation entityType, boolean isNone, @Nullable ObjectList<ResourceLocation> matched) {
             if (this.entities == null) this.entities = new IntOpenHashSet();
             this.entities.add(entityId);
 
@@ -202,13 +213,13 @@ public final class EntityTracker {
                 this.entitiesByType.computeIfAbsent(entityType, key -> new IntOpenHashSet()).add(entityId);
             }
 
-            if (updatable !=null && !updatable.isEmpty()) {
+            if (matched != null && !matched.isEmpty()) {
                 if (this.entitiesByFilter == null) this.entitiesByFilter = new Object2ObjectOpenHashMap<>();
-                updatable.forEach(filterId -> this.entitiesByFilter.computeIfAbsent(filterId, key -> new IntOpenHashSet()).add(entityId));
+                matched.forEach(filterId -> this.entitiesByFilter.computeIfAbsent(filterId, key -> new IntOpenHashSet()).add(entityId));
             }
         }
 
-        void remove(int entityId, ResourceLocation entityType, boolean isNone, @Nullable ObjectList<ResourceLocation> updatable) {
+        void remove(int entityId, ResourceLocation entityType, boolean isNone, @Nullable ObjectList<ResourceLocation> matched) {
             if (this.entities != null) {
                 this.entities.remove(entityId);
                 if (this.entities.isEmpty()) this.entities = null;
@@ -223,15 +234,15 @@ public final class EntityTracker {
                 if (this.entitiesByType.isEmpty()) this.entitiesByType = null;
             }
 
-            if (updatable != null && !updatable.isEmpty() && this.entitiesByFilter != null) {
-                updatable.forEach(filterId -> {
+            if (matched != null && !matched.isEmpty() && this.entitiesByFilter != null) {
+                matched.forEach(filterId -> {
                     IntSet filtered = this.entitiesByFilter.get(filterId);
                     if (filtered != null) {
                         filtered.remove(entityId);
                         if (filtered.isEmpty()) this.entitiesByFilter.remove(filterId);
                     }
-                    if (this.entitiesByFilter.isEmpty()) this.entitiesByFilter = null;
                 });
+                if (this.entitiesByFilter.isEmpty()) this.entitiesByFilter = null;
             }
         }
     }

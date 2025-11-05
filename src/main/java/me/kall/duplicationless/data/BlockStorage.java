@@ -57,14 +57,15 @@ public abstract class BlockStorage extends SavedData {
     }
 
     public @NotNull @UnmodifiableView LongSet viewChunk(long chunk) {
-        return LongSets.unmodifiable(this.positions().getOrDefault(chunk, LongSets.emptySet()));
+        LongSet blocks = this.positions().get(chunk);
+        return blocks == null || blocks.isEmpty() ? LongSets.emptySet() : LongSets.unmodifiable(blocks);
     }
 
     public boolean has(long chunk, long block) {
         return this.positions().getOrDefault(chunk, LongSets.emptySet()).contains(block);
     }
 
-    public @NotNull OptionalLong getOne(long chunk) {
+    public @NotNull OptionalLong pick(long chunk) {
         LongSet blocks = this.positions().get(chunk);
         return blocks == null ? OptionalLong.empty() : OptionalLong.of(blocks.iterator().nextLong());
     }

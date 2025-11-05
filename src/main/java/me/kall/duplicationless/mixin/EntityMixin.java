@@ -24,9 +24,9 @@ public abstract class EntityMixin {
 
     @WrapMethod(method = "setPosRaw")
     private void onChunkUpdate(double x, double y, double z, @NotNull Operation<Void> original) {
-        long before = this.chunkPosition().toLong();
+        final long before = this.chunkPosition().toLong();
         original.call(x, y, z);
-        long after = this.chunkPosition().toLong();
+        final long after = this.chunkPosition().toLong();
         if (before == after) return;
         MinecraftForge.EVENT_BUS.post(new EntityChunkChangeEvent.After((Entity) (Object) this));
     }

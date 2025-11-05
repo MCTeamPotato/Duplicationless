@@ -67,7 +67,7 @@ public class JsonConfig {
             JsonElement fileVersion = fileConfig.get("Version");
             if (fileVersion == null || !fileVersion.getAsString().equals(defaultConfig.get("Version").getAsString())) {
                 this.configMap.put("Version", defaultConfig.get("Version"));
-                update();
+                saveToFile();
             }
         } catch (IOException e) {
             throw new RuntimeException("Failed to load config file: " + configPath, e);
@@ -81,10 +81,6 @@ public class JsonConfig {
         } catch (IOException e) {
             throw new RuntimeException("Failed to create config file: " + configPath, e);
         }
-    }
-
-    private void update() {
-        saveToFile();
     }
 
     private void saveToFile() {
