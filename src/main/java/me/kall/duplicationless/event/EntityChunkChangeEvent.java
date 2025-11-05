@@ -1,0 +1,22 @@
+package me.kall.duplicationless.event;
+
+import net.minecraft.world.entity.Entity;
+import net.minecraftforge.event.entity.EntityEvent;
+
+public class EntityChunkChangeEvent extends EntityEvent {
+    public EntityChunkChangeEvent(Entity entity) {
+        super(entity);
+    }
+
+    public static final class Before extends EntityChunkChangeEvent {
+        public Before(Entity entity) {
+            super(entity);
+        }
+    }
+
+    public static final class After extends EntityChunkChangeEvent {
+        public After(Entity entity) {
+            super(entity);
+        }
+    }
+}

@@ -1,6 +1,7 @@
 {
   "required": true,
   "package": "me.kall.duplicationless.mixin",
+  "plugin": "me.kall.duplicationless.mixin.MixinExtrasInit",
   "compatibilityLevel": "JAVA_8",
   "overwrites": {
     "conformVisibility": false
@@ -9,6 +10,8 @@
   "client": [
   ],
   "mixins": [
+    "EntityMixin",
+    "EntityTypeMixin",
     "ServerLevelMixin"
   ],
   "injectors": {
