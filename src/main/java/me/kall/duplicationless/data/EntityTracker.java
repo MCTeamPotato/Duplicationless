@@ -41,7 +41,6 @@ public final class EntityTracker {
     private static final Object2ObjectMap<ResourceLocation, Long2ObjectMap<EntityStorage>> ENTITIES = new Object2ObjectOpenHashMap<>();
     private static final Object2ObjectMap<ResourceLocation, Predicate<Entity>> FILTERS = new Object2ObjectOpenHashMap<>();
     private static final ConcurrentLinkedQueue<Runnable> UPDATE_TASKS = new ConcurrentLinkedQueue<>();
-    private static final int COUNT_INTERVAL = 20 * 60 * 30;
 
     private EntityTracker() {}
 
@@ -54,7 +53,7 @@ public final class EntityTracker {
 
         public void register(ResourceLocation filterId, Predicate<Entity> filter) {
             this.server.execute(() -> {
-                if (FILTERS.containsKey(filterId)) throw new RuntimeException("[EntityTracker] Duplicate filter ID detected: " + filterId.toString() + ".");
+                if (FILTERS.containsKey(filterId)) throw new RuntimeException("[EntityTracker] Duplicate filter ID detected: " + filterId.toString());
                 FILTERS.put(filterId, filter);
             });
         }
@@ -66,7 +65,7 @@ public final class EntityTracker {
 
     public static @NotNull @UnmodifiableView IntSet getEntities(@NotNull ServerLevel level, long chunkPos, EntityType<?> type) {
         return getInternal(level, chunkPos, entityStorage -> {
-            ResourceLocation id = ((RegistryEntry)type).registry$getName();
+            ResourceLocation id = RegistryEntry.getLocation(type);
             if (id.equals(RegistryEntry.NONE)) return null;
             if (entityStorage.entitiesByType == null) return null;
             return entityStorage.entitiesByType.get(id);
@@ -96,13 +95,15 @@ public final class EntityTracker {
         final long chunkPos = entity.chunkPosition().toLong();
         final ResourceLocation dim = level.dimension().location();
         final int id = entity.getId();
-        final ResourceLocation entityType = ((RegistryEntry) entity.getType()).registry$getName();
+        final ResourceLocation entityType = RegistryEntry.getLocation(entity.getType());
         boolean isNone = entityType.equals(RegistryEntry.NONE);
         ObjectList<ResourceLocation> matched = null;
-        for (Map.Entry<ResourceLocation, Predicate<Entity>> entry : FILTERS.entrySet()) {
-            if (entry.getValue().test(entity)) {
-                if (matched == null) matched = new ObjectArrayList<>();
-                matched.add(entry.getKey());
+        if (!FILTERS.isEmpty()) {
+            for (Map.Entry<ResourceLocation, Predicate<Entity>> entry : FILTERS.entrySet()) {
+                if (entry.getValue().test(entity)) {
+                    if (matched == null) matched = new ObjectArrayList<>();
+                    matched.add(entry.getKey());
+                }
             }
         }
 
@@ -131,7 +132,7 @@ public final class EntityTracker {
         bus.addListener(EntityTracker::onLeave);
         bus.addListener(EntityTracker::beforeChunkChange);
         bus.addListener(EntityTracker::afterChunkChange);
-        bus.addListener(EntityTracker::onTick);
+        bus.addListener(EntityTracker::taskUpdate);
         bus.addListener(EntityTracker::onServerStart);
         LOGGER.info("[EntityTracker] Initialized successfully.");
     }
@@ -169,30 +170,11 @@ public final class EntityTracker {
         }
     }
 
-    private static void onTick(TickEvent.@NotNull ServerTickEvent event) {
+    private static void taskUpdate(TickEvent.@NotNull ServerTickEvent event) {
         if (event.phase.equals(TickEvent.Phase.START)) {
             Runnable task;
             while ((task = EntityTracker.UPDATE_TASKS.poll()) != null) task.run();
-
-            if (event.getServer().getTickCount() % COUNT_INTERVAL == 0) {
-                LOGGER.info("[EntityTracker] The number of loading entities in your server: {}~", count());
-                LOGGER.info("[EntityTracker] This count message appears per {} minutes", COUNT_INTERVAL / 20 / 60);
-            }
         }
-    }
-
-    private static int count() {
-        int count = 0;
-
-        for (Long2ObjectMap<EntityStorage> chunks : ENTITIES.values()) {
-            for (EntityStorage entityStorage : chunks.values()) {
-                if (entityStorage.entities != null) {
-                    count += entityStorage.entities.size();
-                }
-            }
-        }
-
-        return count;
     }
 
     private static final class EntityStorage {
@@ -215,7 +197,9 @@ public final class EntityTracker {
 
             if (matched != null && !matched.isEmpty()) {
                 if (this.entitiesByFilter == null) this.entitiesByFilter = new Object2ObjectOpenHashMap<>();
-                matched.forEach(filterId -> this.entitiesByFilter.computeIfAbsent(filterId, key -> new IntOpenHashSet()).add(entityId));
+                for (ResourceLocation filterId : matched) {
+                    this.entitiesByFilter.computeIfAbsent(filterId, key -> new IntOpenHashSet()).add(entityId);
+                }
             }
         }
 
@@ -235,13 +219,13 @@ public final class EntityTracker {
             }
 
             if (matched != null && !matched.isEmpty() && this.entitiesByFilter != null) {
-                matched.forEach(filterId -> {
+                for (ResourceLocation filterId : matched) {
                     IntSet filtered = this.entitiesByFilter.get(filterId);
                     if (filtered != null) {
                         filtered.remove(entityId);
                         if (filtered.isEmpty()) this.entitiesByFilter.remove(filterId);
                     }
-                });
+                }
                 if (this.entitiesByFilter.isEmpty()) this.entitiesByFilter = null;
             }
         }

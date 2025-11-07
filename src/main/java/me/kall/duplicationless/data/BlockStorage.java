@@ -26,7 +26,9 @@ public abstract class BlockStorage extends SavedData {
         if (this.dataTrustable() || validation == null) return;
 
         Long2ObjectMap<LongSet> copy = new Long2ObjectOpenHashMap<>();
-        this.positions().long2ObjectEntrySet().forEach(entry -> copy.put(entry.getLongKey(), new LongOpenHashSet(entry.getValue())));
+        for (Long2ObjectMap.Entry<LongSet> entry : this.positions().long2ObjectEntrySet()) {
+            copy.put(entry.getLongKey(), new LongOpenHashSet(entry.getValue()));
+        }
 
         this.clear();
 
