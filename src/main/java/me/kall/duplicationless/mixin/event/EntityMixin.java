@@ -1,4 +1,4 @@
-package me.kall.duplicationless.mixin;
+package me.kall.duplicationless.mixin.event;
 
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;

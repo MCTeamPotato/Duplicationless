@@ -1,4 +1,4 @@
-package me.kall.duplicationless.mixin;
+package me.kall.duplicationless.mixin.event;
 
 import me.kall.duplicationless.event.BlockChangeEvent;
 import net.minecraft.core.BlockPos;

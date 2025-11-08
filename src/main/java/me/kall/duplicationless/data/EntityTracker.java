@@ -65,7 +65,7 @@ public final class EntityTracker {
 
     public static @NotNull @UnmodifiableView IntSet getEntities(@NotNull ServerLevel level, long chunkPos, EntityType<?> type) {
         return getInternal(level, chunkPos, entityStorage -> {
-            ResourceLocation id = RegistryEntry.getLocation(type);
+            ResourceLocation id = RegistryEntry.get(type);
             if (id.equals(RegistryEntry.NONE)) return null;
             if (entityStorage.entitiesByType == null) return null;
             return entityStorage.entitiesByType.get(id);
@@ -95,7 +95,7 @@ public final class EntityTracker {
         final long chunkPos = entity.chunkPosition().toLong();
         final ResourceLocation dim = level.dimension().location();
         final int id = entity.getId();
-        final ResourceLocation entityType = RegistryEntry.getLocation(entity.getType());
+        final ResourceLocation entityType = RegistryEntry.get(entity.getType());
         boolean isNone = entityType.equals(RegistryEntry.NONE);
         ObjectList<ResourceLocation> matched = null;
         if (!FILTERS.isEmpty()) {

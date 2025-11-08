@@ -1,4 +1,4 @@
-package me.kall.duplicationless.mixin;
+package me.kall.duplicationless.mixin.registry;
 
 import me.kall.duplicationless.ext.RegistryEntry;
 import net.minecraft.resources.ResourceLocation;
@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 
 @Mixin(EntityType.class)
-public class EntityTypeMixin implements RegistryEntry {
+public abstract class EntityTypeMixin implements RegistryEntry {
     @Unique private ResourceLocation registry$name;
 
     @Override
