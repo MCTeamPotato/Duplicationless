@@ -8,6 +8,7 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.server.ServerLifecycleHooks;
+import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -25,6 +26,7 @@ public class Executor {
     }
 
     @SubscribeEvent
+    @ApiStatus.Internal
     public static void onServerTick(TickEvent.@NotNull ServerTickEvent event) {
         if (event.phase == TickEvent.Phase.START) {
             int tick = event.getServer().getTickCount();
