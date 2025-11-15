@@ -6,7 +6,8 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.saveddata.SavedData;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -19,10 +20,10 @@ import java.util.function.Supplier;
 public abstract class BlockStorage extends SavedData {
     protected abstract @NotNull Long2ObjectMap<LongSet> positions();
     protected abstract boolean dataTrustable();
-    protected abstract @Nullable Predicate<Block> validation();
+    protected abstract @Nullable Predicate<BlockState> validation();
 
     public void rebuild(@NotNull ServerLevel level) {
-        Predicate<Block> validation = this.validation();
+        Predicate<BlockState> validation = this.validation();
         if (this.dataTrustable() || validation == null) return;
 
         Long2ObjectMap<LongSet> copy = new Long2ObjectOpenHashMap<>();
@@ -34,8 +35,9 @@ public abstract class BlockStorage extends SavedData {
 
         for (Long2ObjectMap.Entry<LongSet> entry : copy.long2ObjectEntrySet()) {
             long chunk = entry.getLongKey();
+            level.getPoiManager().ensureLoadedAndValid(level, new ChunkPos(chunk).getWorldPosition(), 16);
             for (long pos : entry.getValue()) {
-                if (!validation.test(level.getBlockState(BlockPos.of(pos)).getBlock())) continue;
+                if (!validation.test(level.getBlockState(BlockPos.of(pos)))) continue;
                 this.add(chunk, pos);
             }
         }
