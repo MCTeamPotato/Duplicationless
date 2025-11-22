@@ -53,16 +53,13 @@ public final class EntityTracker {
 
         public void register(ResourceLocation filterId, Predicate<Entity> filter) {
             this.server.execute(() -> {
-                if (FILTERS.containsKey(filterId)) throw new RuntimeException("[EntityTracker] Duplicate filter ID detected: " + filterId.toString());
+                if (FILTERS.containsKey(filterId)) LOGGER.info("[EntityTracker] Duplicate filter ID detected: {}. Overriding.", filterId.toString());
                 FILTERS.put(filterId, filter);
             });
         }
 
-        public void register(ResourceLocation filterId, Class<?> entityClass) {
-            this.server.execute(() -> {
-                if (FILTERS.containsKey(filterId)) throw new RuntimeException("[EntityTracker] Duplicate filter ID detected: " + filterId.toString());
-                FILTERS.put(filterId, entityClass::isInstance);
-            });
+        public void register(ResourceLocation filterId, @NotNull Class<?> entityClass) {
+            register(filterId, entityClass::isInstance);
         }
     }
 
