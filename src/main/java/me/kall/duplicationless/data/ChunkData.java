@@ -49,7 +49,9 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
             long chunk = entry.getLongKey();
             level.getPoiManager().ensureLoadedAndValid(level, new ChunkPos(chunk).getMiddleBlockPosition(60), 16);
             for (DATA data : entry.getValue()) {
-                if (!validation.test(dataToType().apply(data, level))) continue;
+                TYPE type = dataToType().apply(data, level);
+                if (type == null) return;
+                if (!validation.test(type)) continue;
                 this.add(chunk, data);
             }
         }
@@ -162,6 +164,8 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
         @Override public abstract @NotNull Long2ObjectMap<Set<Long>> data();
         @Override public abstract @Nullable Predicate<BlockState> validation();
 
+        public static final long ZERO = BlockPos.ZERO.asLong();
+
         @Override
         public BiFunction<Long, ServerLevel, BlockState> dataToType() {
             return (pos, level) -> level.getBlockState(BlockPos.of(pos));
@@ -174,7 +178,7 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
 
         @Override
         public Function<Tag, Long> tagToData() {
-            return tag -> ((LongTag)tag).getAsLong();
+            return tag -> tag instanceof LongTag longTag ? longTag.getAsLong() : ZERO;
         }
 
         @Override
