@@ -20,7 +20,7 @@ public class Executor {
 
     public static void runAfter(int ticks, Runnable task) {
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
-        if (server == null) return;
+        if (server == null) throw new IllegalStateException("Server unavailable. Cannot setup task list.");
         int tickCount = server.getTickCount();
         server.execute(() -> TASKS.computeIfAbsent(tickCount + ticks, key -> new ArrayList<>()).add(task));
     }

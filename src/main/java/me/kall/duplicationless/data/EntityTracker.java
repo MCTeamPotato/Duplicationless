@@ -57,6 +57,13 @@ public final class EntityTracker {
                 FILTERS.put(filterId, filter);
             });
         }
+
+        public void register(ResourceLocation filterId, Class<?> entityClass) {
+            this.server.execute(() -> {
+                if (FILTERS.containsKey(filterId)) throw new RuntimeException("[EntityTracker] Duplicate filter ID detected: " + filterId.toString());
+                FILTERS.put(filterId, entityClass::isInstance);
+            });
+        }
     }
 
     public static @NotNull @UnmodifiableView IntSet getEntities(@NotNull ServerLevel level, long chunkPos) {
@@ -183,50 +190,60 @@ public final class EntityTracker {
         @Nullable Object2ObjectMap<ResourceLocation, IntSet> entitiesByFilter;
 
         boolean isEmpty() {
-            return this.entities == null && this.entitiesByType == null && this.entitiesByFilter == null;
+            return entities == null && entitiesByType == null && entitiesByFilter == null;
         }
 
-        void add(int entityId, ResourceLocation entityType, boolean isNone, @Nullable ObjectList<ResourceLocation> matched) {
-            if (this.entities == null) this.entities = new IntOpenHashSet();
-            this.entities.add(entityId);
+        void add(int entityId, ResourceLocation type, boolean isNone, @Nullable ObjectList<ResourceLocation> matched) {
+            updateEntities(entityId, true);
 
             if (!isNone) {
-                if (this.entitiesByType == null) this.entitiesByType = new Object2ObjectOpenHashMap<>();
-                this.entitiesByType.computeIfAbsent(entityType, key -> new IntOpenHashSet()).add(entityId);
+                if (entitiesByType == null) entitiesByType = new Object2ObjectOpenHashMap<>();
+                update(entitiesByType, type, entityId, true);
             }
 
             if (matched != null && !matched.isEmpty()) {
-                if (this.entitiesByFilter == null) this.entitiesByFilter = new Object2ObjectOpenHashMap<>();
+                if (entitiesByFilter == null) entitiesByFilter = new Object2ObjectOpenHashMap<>();
                 for (ResourceLocation filterId : matched) {
-                    this.entitiesByFilter.computeIfAbsent(filterId, key -> new IntOpenHashSet()).add(entityId);
+                    update(entitiesByFilter, filterId, entityId, true);
                 }
             }
         }
 
-        void remove(int entityId, ResourceLocation entityType, boolean isNone, @Nullable ObjectList<ResourceLocation> matched) {
-            if (this.entities != null) {
-                this.entities.remove(entityId);
-                if (this.entities.isEmpty()) this.entities = null;
+        void remove(int entityId, ResourceLocation type, boolean isNone, @Nullable ObjectList<ResourceLocation> matched) {
+            updateEntities(entityId, false);
+
+            if (!isNone && entitiesByType != null) {
+                update(entitiesByType, type, entityId, false);
+                if (entitiesByType.isEmpty()) entitiesByType = null;
             }
 
-            if (!isNone && this.entitiesByType != null) {
-                IntSet entitiesOfType = this.entitiesByType.get(entityType);
-                if (entitiesOfType != null) {
-                    entitiesOfType.remove(entityId);
-                    if (entitiesOfType.isEmpty()) this.entitiesByType.remove(entityType);
-                }
-                if (this.entitiesByType.isEmpty()) this.entitiesByType = null;
-            }
-
-            if (matched != null && !matched.isEmpty() && this.entitiesByFilter != null) {
+            if (matched != null && !matched.isEmpty() && entitiesByFilter != null) {
                 for (ResourceLocation filterId : matched) {
-                    IntSet filtered = this.entitiesByFilter.get(filterId);
-                    if (filtered != null) {
-                        filtered.remove(entityId);
-                        if (filtered.isEmpty()) this.entitiesByFilter.remove(filterId);
-                    }
+                    update(entitiesByFilter, filterId, entityId, false);
                 }
-                if (this.entitiesByFilter.isEmpty()) this.entitiesByFilter = null;
+                if (entitiesByFilter.isEmpty()) entitiesByFilter = null;
+            }
+        }
+
+        private void updateEntities(int entityId, boolean add) {
+            if (add) {
+                if (entities == null) entities = new IntOpenHashSet();
+                entities.add(entityId);
+            } else if (entities != null) {
+                entities.remove(entityId);
+                if (entities.isEmpty()) entities = null;
+            }
+        }
+
+        private static void update(Object2ObjectMap<ResourceLocation, IntSet> map, ResourceLocation key, int entityId, boolean add) {
+            if (add) {
+                map.computeIfAbsent(key, k -> new IntOpenHashSet()).add(entityId);
+            } else {
+                IntSet set = map.get(key);
+                if (set != null) {
+                    set.remove(entityId);
+                    if (set.isEmpty()) map.remove(key);
+                }
             }
         }
     }
