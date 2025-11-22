@@ -2,6 +2,7 @@ package me.kall.duplicationless.util;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import me.kall.duplicationless.Duplicationless;
 import net.minecraft.server.MinecraftServer;
 import net.minecraftforge.event.TickEvent;
@@ -11,7 +12,6 @@ import net.minecraftforge.server.ServerLifecycleHooks;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.FORGE, modid = Duplicationless.MOD_ID)
@@ -22,7 +22,7 @@ public class Executor {
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) throw new IllegalStateException("Server unavailable. Cannot setup task list.");
         int tickCount = server.getTickCount();
-        server.execute(() -> TASKS.computeIfAbsent(tickCount + ticks, key -> new ArrayList<>()).add(task));
+        server.execute(() -> TASKS.computeIfAbsent(tickCount + ticks, key -> new ObjectArrayList<>()).add(task));
     }
 
     @SubscribeEvent
