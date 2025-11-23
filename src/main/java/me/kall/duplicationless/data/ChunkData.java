@@ -1,7 +1,9 @@
 package me.kall.duplicationless.data;
 
+import it.unimi.dsi.fastutil.longs.Long2ObjectFunction;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2LongFunction;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.*;
@@ -172,12 +174,12 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
         }
 
         @Override
-        public Function<Long, Tag> dataToTag() {
+        public Long2ObjectFunction<Tag> dataToTag() {
             return LongTag::valueOf;
         }
 
         @Override
-        public Function<Tag, Long> tagToData() {
+        public Object2LongFunction<Tag> tagToData() {
             return tag -> tag instanceof LongTag longTag ? longTag.getAsLong() : ZERO;
         }
 
