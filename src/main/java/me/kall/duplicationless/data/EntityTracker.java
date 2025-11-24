@@ -12,7 +12,6 @@ import it.unimi.dsi.fastutil.objects.ObjectList;
 import me.kall.duplicationless.event.EntityChunkChangeEvent;
 import me.kall.duplicationless.ext.RegistryEntry;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -45,17 +44,9 @@ public final class EntityTracker {
     private EntityTracker() {}
 
     public static final class EntityFilterRegistryEvent extends Event {
-        private final MinecraftServer server;
-
-        private EntityFilterRegistryEvent(MinecraftServer server) {
-            this.server = server;
-        }
-
         public void register(ResourceLocation filterId, Predicate<Entity> filter) {
-            this.server.execute(() -> {
-                if (FILTERS.containsKey(filterId)) LOGGER.info("[EntityTracker] Duplicate filter ID detected: {}. Overriding.", filterId.toString());
-                FILTERS.put(filterId, filter);
-            });
+            if (FILTERS.containsKey(filterId)) LOGGER.info("[EntityTracker] Duplicate filter ID detected: {}. Overriding.", filterId.toString());
+            FILTERS.put(filterId, filter);
         }
 
         public void register(ResourceLocation filterId, @NotNull Class<?> entityClass) {
@@ -137,16 +128,15 @@ public final class EntityTracker {
         bus.addListener(EntityTracker::beforeChunkChange);
         bus.addListener(EntityTracker::afterChunkChange);
         bus.addListener(EntityTracker::taskUpdate);
-        bus.addListener(EntityTracker::onServerStart);
+        bus.addListener(EntityTracker::filterRegistry);
         LOGGER.info("[EntityTracker] Initialized successfully.");
     }
 
-    private static void onServerStart(@NotNull ServerAboutToStartEvent event) {
-        MinecraftForge.EVENT_BUS.post(new EntityFilterRegistryEvent(event.getServer()));
+    private static void filterRegistry(@NotNull ServerAboutToStartEvent event) {
+        MinecraftForge.EVENT_BUS.post(new EntityFilterRegistryEvent());
     }
 
     private static void onJoin(@NotNull EntityJoinLevelEvent event) {
-        if (event.isCanceled()) return;
         Entity entity = event.getEntity();
         if (event.getLevel() instanceof ServerLevel level) {
             update(entity, level, true);

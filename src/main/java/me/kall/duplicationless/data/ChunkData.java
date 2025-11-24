@@ -9,7 +9,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.*;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.saveddata.SavedData;
 import org.jetbrains.annotations.NotNull;
@@ -49,7 +48,6 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
 
         for (Long2ObjectMap.Entry<Set<DATA>> entry : copy.long2ObjectEntrySet()) {
             long chunk = entry.getLongKey();
-            level.getPoiManager().ensureLoadedAndValid(level, new ChunkPos(chunk).getMiddleBlockPosition(60), 16);
             for (DATA data : entry.getValue()) {
                 TYPE type = dataToType().apply(data, level);
                 if (type == null) return;
