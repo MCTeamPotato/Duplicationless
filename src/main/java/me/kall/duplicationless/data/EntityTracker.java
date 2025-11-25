@@ -43,17 +43,9 @@ public final class EntityTracker {
     private static final Object2ObjectMap<ResourceLocation, Predicate<Entity>> FILTERS = new Object2ObjectOpenHashMap<>();
     private static final ConcurrentLinkedQueue<Runnable> UPDATE_TASKS = new ConcurrentLinkedQueue<>();
 
-    private static volatile boolean initialized = false;
-
-    private static void logInitialization() {
-        if (initialized) return;
-        initialized = true;
-        LOGGER.warn("Duplicationless Entity Tracker has initialized successfully.");
-    }
-
     public static final class EntityFilterRegistryEvent extends Event {
         public void register(ResourceLocation filterId, Predicate<Entity> filter) {
-            if (FILTERS.containsKey(filterId)) LOGGER.info("[EntityTracker] Duplicate filter ID detected: {}. Overriding.", filterId.toString());
+            if (FILTERS.containsKey(filterId)) LOGGER.warn("[EntityTracker] Duplicate filter ID detected: {}. This is normal if you are creating multiple singleplayer worlds. Overriding.", filterId.toString());
             FILTERS.put(filterId, filter);
         }
 
@@ -126,13 +118,12 @@ public final class EntityTracker {
                 }
             }
         });
-
-        logInitialization();
     }
 
     @SubscribeEvent
     public static void filterRegistry(@NotNull ServerAboutToStartEvent event) {
         MinecraftForge.EVENT_BUS.post(new EntityFilterRegistryEvent());
+        LOGGER.info("Duplicationless Entity Tracker has initialized successfully.");
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
