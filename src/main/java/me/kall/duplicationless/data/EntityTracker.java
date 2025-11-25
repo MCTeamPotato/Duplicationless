@@ -9,6 +9,7 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
+import me.kall.duplicationless.Duplicationless;
 import me.kall.duplicationless.event.EntityChunkChangeEvent;
 import me.kall.duplicationless.ext.RegistryEntry;
 import net.minecraft.resources.ResourceLocation;
@@ -22,10 +23,10 @@ import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
 import net.minecraftforge.event.server.ServerAboutToStartEvent;
 import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -35,13 +36,20 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+@Mod.EventBusSubscriber(modid = Duplicationless.MOD_ID)
 public final class EntityTracker {
     private static final Logger LOGGER = LogManager.getLogger(EntityTracker.class);
     private static final Object2ObjectMap<ResourceLocation, Long2ObjectMap<EntityStorage>> ENTITIES = new Object2ObjectOpenHashMap<>();
     private static final Object2ObjectMap<ResourceLocation, Predicate<Entity>> FILTERS = new Object2ObjectOpenHashMap<>();
     private static final ConcurrentLinkedQueue<Runnable> UPDATE_TASKS = new ConcurrentLinkedQueue<>();
 
-    private EntityTracker() {}
+    private static volatile boolean initialized = false;
+
+    private static void logInitialization() {
+        if (initialized) return;
+        initialized = true;
+        LOGGER.warn("Duplicationless Entity Tracker has initialized successfully.");
+    }
 
     public static final class EntityFilterRegistryEvent extends Event {
         public void register(ResourceLocation filterId, Predicate<Entity> filter) {
@@ -118,53 +126,49 @@ public final class EntityTracker {
                 }
             }
         });
+
+        logInitialization();
     }
 
-    @ApiStatus.Internal
-    public static void register() {
-        IEventBus bus = MinecraftForge.EVENT_BUS;
-        bus.addListener(EventPriority.LOWEST, EntityTracker::onJoin);
-        bus.addListener(EntityTracker::onLeave);
-        bus.addListener(EntityTracker::beforeChunkChange);
-        bus.addListener(EntityTracker::afterChunkChange);
-        bus.addListener(EntityTracker::taskUpdate);
-        bus.addListener(EntityTracker::filterRegistry);
-        LOGGER.info("[EntityTracker] Initialized successfully.");
-    }
-
-    private static void filterRegistry(@NotNull ServerAboutToStartEvent event) {
+    @SubscribeEvent
+    public static void filterRegistry(@NotNull ServerAboutToStartEvent event) {
         MinecraftForge.EVENT_BUS.post(new EntityFilterRegistryEvent());
     }
 
-    private static void onJoin(@NotNull EntityJoinLevelEvent event) {
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onJoin(@NotNull EntityJoinLevelEvent event) {
         Entity entity = event.getEntity();
         if (event.getLevel() instanceof ServerLevel level) {
             update(entity, level, true);
         }
     }
 
-    private static void onLeave(@NotNull EntityLeaveLevelEvent event) {
+    @SubscribeEvent
+    public static void onLeave(@NotNull EntityLeaveLevelEvent event) {
         Entity entity = event.getEntity();
         if (event.getLevel() instanceof ServerLevel level) {
             update(entity, level, false);
         }
     }
 
-    private static void beforeChunkChange(EntityChunkChangeEvent.@NotNull Before event) {
+    @SubscribeEvent
+    public static void beforeChunkChange(EntityChunkChangeEvent.@NotNull Before event) {
         Entity entity = event.getEntity();
         if (entity.level() instanceof ServerLevel level) {
             update(entity, level, false);
         }
     }
 
-    private static void afterChunkChange(EntityChunkChangeEvent.@NotNull After event) {
+    @SubscribeEvent
+    public static void afterChunkChange(EntityChunkChangeEvent.@NotNull After event) {
         Entity entity = event.getEntity();
         if (entity.level() instanceof ServerLevel level) {
             update(entity, level, true);
         }
     }
 
-    private static void taskUpdate(TickEvent.@NotNull ServerTickEvent event) {
+    @SubscribeEvent
+    public static void taskUpdate(TickEvent.@NotNull ServerTickEvent event) {
         if (event.phase.equals(TickEvent.Phase.START)) {
             Runnable task;
             while ((task = EntityTracker.UPDATE_TASKS.poll()) != null) task.run();
