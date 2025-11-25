@@ -154,7 +154,7 @@ public final class EntityTracker {
     @SubscribeEvent
     public static void beforeChunkChange(EntityChunkChangeEvent.@NotNull Before event) {
         Entity entity = event.getEntity();
-        if (entity.level() instanceof ServerLevel level) {
+        if (entity.level instanceof ServerLevel level) {
             update(entity, level, false);
         }
     }
@@ -162,7 +162,7 @@ public final class EntityTracker {
     @SubscribeEvent
     public static void afterChunkChange(EntityChunkChangeEvent.@NotNull After event) {
         Entity entity = event.getEntity();
-        if (entity.level() instanceof ServerLevel level) {
+        if (entity.level instanceof ServerLevel level) {
             update(entity, level, true);
         }
     }
