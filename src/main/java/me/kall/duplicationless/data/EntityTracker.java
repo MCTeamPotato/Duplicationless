@@ -18,8 +18,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.EntityJoinLevelEvent;
-import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
+import net.minecraftforge.event.entity.EntityJoinWorldEvent;
+import net.minecraftforge.event.entity.EntityLeaveWorldEvent;
 import net.minecraftforge.event.server.ServerAboutToStartEvent;
 import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.eventbus.api.EventPriority;
@@ -136,17 +136,17 @@ public final class EntityTracker {
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void onJoin(@NotNull EntityJoinLevelEvent event) {
+    public static void onJoin(@NotNull EntityJoinWorldEvent event) {
         Entity entity = event.getEntity();
-        if (event.getLevel() instanceof ServerLevel level) {
+        if (event.getWorld() instanceof ServerLevel level) {
             update(entity, level, true);
         }
     }
 
     @SubscribeEvent
-    public static void onLeave(@NotNull EntityLeaveLevelEvent event) {
+    public static void onLeave(@NotNull EntityLeaveWorldEvent event) {
         Entity entity = event.getEntity();
-        if (event.getLevel() instanceof ServerLevel level) {
+        if (event.getWorld() instanceof ServerLevel level) {
             update(entity, level, false);
         }
     }

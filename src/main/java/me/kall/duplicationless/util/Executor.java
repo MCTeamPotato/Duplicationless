@@ -52,8 +52,9 @@ public class Executor {
     @ApiStatus.Internal
     public static void onServerTick(TickEvent.@NotNull ServerTickEvent event) {
         if (event.phase == TickEvent.Phase.START) {
-            int tick = event.getServer().getTickCount();
-            event.getServer().execute(() -> {
+            MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+            int tick = server.getTickCount();
+            server.execute(() -> {
                 List<Runnable> tasks = TASKS.get(tick);
                 if (tasks == null) return;
                 tasks.forEach(Runnable::run);

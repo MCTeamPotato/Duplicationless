@@ -15,7 +15,7 @@ public class RegistryEntries {
     }
 
     public static EntityType<?> entityType(ResourceLocation id) {
-        return Optional.ofNullable(ForgeRegistries.ENTITY_TYPES.getValue(id)).orElseThrow(() -> new IllegalStateException("Missing key in EntityType: " + id));
+        return Optional.ofNullable(ForgeRegistries.ENTITIES.getValue(id)).orElseThrow(() -> new IllegalStateException("Missing key in EntityType: " + id));
     }
 
     public static Block block(ResourceLocation id) {
