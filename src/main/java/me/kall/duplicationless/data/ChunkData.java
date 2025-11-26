@@ -61,7 +61,7 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
             long chunk = e.getLongKey();
             for (DATA data : e.getValue()) {
                 TYPE type = this.dataToType().apply(data, level);
-                if (type == null) return;
+                if (type == null) continue;
                 if (!validation.test(type)) continue;
                 this.add(level, chunk, data);
             }
@@ -149,6 +149,7 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
             }
         }
 
+        this.setDirty();
         return this;
     }
 
@@ -187,11 +188,11 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
             return (pos, level) -> level.getBlockState(BlockPos.of(pos));
         }
 
-        @Override public Long2ObjectFunction<Tag> dataToTag() {
+        @Override public Function<Long, Tag> dataToTag() {
             return LongTag::valueOf;
         }
 
-        @Override public Object2LongFunction<Tag> tagToData() {
+        @Override public Function<Tag, Long> tagToData() {
             return tag -> tag instanceof LongTag lg ? lg.getAsLong() : ZERO;
         }
 
