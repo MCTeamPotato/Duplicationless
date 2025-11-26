@@ -1,5 +1,3 @@
-# 1.0.1
-- Remove unnecessary chunk load codes in ChunkData
-- Add dim key for ChunkData
-- Add Positions#nearestOne helper methods
-- introduce ChunkTickEvent (Pre and Post)
+# 1.0.2
+- Fix ChunkData rebuild and load logic
+- Cache EntityTracker filters
