@@ -7,7 +7,6 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import me.kall.duplicationless.Duplicationless;
 import me.kall.duplicationless.event.EntityChunkChangeEvent;
@@ -27,11 +26,11 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
 
-import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -92,17 +91,9 @@ public final class EntityTracker {
         final int id = entity.getId();
         final ResourceLocation entityType = RegistryEntry.get(entity.getType());
         boolean isNone = entityType.equals(RegistryEntry.NONE);
-        ObjectList<ResourceLocation> matched = null;
-        if (!FILTERS.isEmpty()) {
-            for (Map.Entry<ResourceLocation, Predicate<Entity>> entry : FILTERS.entrySet()) {
-                if (entry.getValue().test(entity)) {
-                    if (matched == null) matched = new ObjectArrayList<>();
-                    matched.add(entry.getKey());
-                }
-            }
-        }
+        if (entity instanceof Filterable filterable && !filterable.filter$initialized()) filterable.filter$initialize(FILTERS);
 
-        final ObjectList<ResourceLocation> filters = matched;
+        final ObjectList<ResourceLocation> filters = Filterable.getMatched(entity);
 
         UPDATE_TASKS.add(() -> {
             Long2ObjectMap<EntityStorage> chunks = ENTITIES.computeIfAbsent(dim, key -> new Long2ObjectOpenHashMap<>());
@@ -227,6 +218,17 @@ public final class EntityTracker {
                     if (set.isEmpty()) map.remove(key);
                 }
             }
+        }
+    }
+
+    @ApiStatus.Internal
+    public interface Filterable {
+        ObjectList<ResourceLocation> filter$matched();
+        void filter$initialize(Object2ObjectMap<ResourceLocation, Predicate<Entity>> filters);
+        boolean filter$initialized();
+
+        static ObjectList<ResourceLocation> getMatched(Entity entity) {
+            return ((Filterable)entity).filter$matched();
         }
     }
 }

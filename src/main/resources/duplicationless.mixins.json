@@ -10,11 +10,12 @@
   "client": [
   ],
   "mixins": [
-    "registry.BlockMixin",
+    "data.EntityMixin",
     "event.EntityMixin",
+    "event.ServerLevelMixin",
+    "registry.BlockMixin",
     "registry.EntityTypeMixin",
-    "registry.ItemMixin",
-    "event.ServerLevelMixin"
+    "registry.ItemMixin"
   ],
   "injectors": {
     "defaultRequire": 1
