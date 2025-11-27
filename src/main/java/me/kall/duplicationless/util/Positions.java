@@ -1,33 +1,30 @@
 package me.kall.duplicationless.util;
 
 import it.unimi.dsi.fastutil.longs.LongConsumer;
-import it.unimi.dsi.fastutil.longs.LongIterator;
-import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.ChunkPos;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Set;
+
 public final class Positions {
-    public static long nearestOne(@NotNull final LongSet positions, @NotNull final BlockPos target) {
+    public static long nearestOne(@NotNull final Set<Long> positions, @NotNull final BlockPos target) {
         return nearestOne(positions, target.getX(), target.getY(), target.getZ());
     }
 
-    public static long nearestOne(@NotNull final LongSet positions, final long target) {
+    public static long nearestOne(@NotNull final Set<Long> positions, final long target) {
         return nearestOne(positions, BlockPos.getX(target), BlockPos.getY(target), BlockPos.getZ(target));
     }
 
-    public static long nearestOne(@NotNull final LongSet positions, final int targetX, final int targetY, final int targetZ) {
+    public static long nearestOne(@NotNull final Set<Long> positions, final int targetX, final int targetY, final int targetZ) {
         if (positions.isEmpty()) throw new IllegalArgumentException("Cannot find nearest one from empty positions set.");
 
         long nearest = 0;
         long minDistSq = Long.MAX_VALUE;
 
-        final LongIterator iterator = positions.iterator();
-        while (iterator.hasNext()) {
-            final long next = iterator.nextLong();
-
+        for (long next : positions) {
             final int x = BlockPos.getX(next);
             final int y = BlockPos.getY(next);
             final int z = BlockPos.getZ(next);
