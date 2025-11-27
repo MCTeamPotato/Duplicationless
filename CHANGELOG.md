@@ -1,2 +1,2 @@
-# 1.0.2
-- Add Positions toChunk & iterateAround helper methods
+# 1.0.4
+- Use Set<Long> instead of LongSet in Positions#nearestOne for better adaptation.
