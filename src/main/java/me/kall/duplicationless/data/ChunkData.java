@@ -1,23 +1,28 @@
 package me.kall.duplicationless.data;
 
+import it.unimi.dsi.fastutil.longs.Long2ObjectArrayMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectMaps;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import me.kall.duplicationless.ext.DataRebuilder;
+import me.kall.duplicationless.util.Executor;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.*;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.saveddata.SavedData;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Collections;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -28,7 +33,9 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
 
     public abstract boolean dataTrustable();
     public abstract @Nullable Predicate<TYPE> validation();
+
     public abstract BiFunction<DATA, ServerLevel, TYPE> dataToType();
+
     public abstract Function<DATA, Tag> dataToTag();
     public abstract Function<Tag, DATA> tagToData();
     public abstract int dataTagType();
@@ -48,22 +55,84 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
         ResourceLocation dim = dim(level);
         Long2ObjectMap<Set<DATA>> map = this.getLevelData(dim);
 
-        Long2ObjectMap<Set<DATA>> copy = new Long2ObjectOpenHashMap<>();
-        for (Long2ObjectMap.Entry<Set<DATA>> e : map.long2ObjectEntrySet()) {
-            copy.put(e.getLongKey(), new ObjectOpenHashSet<>(e.getValue()));
+        Long2ObjectMap<List<DATA>> copy = new Long2ObjectArrayMap<>(map.size());
+
+        ObjectIterator<Long2ObjectMap.Entry<Set<DATA>>> origin = Long2ObjectMaps.fastIterator(map);
+
+        while (origin.hasNext()) {
+            Long2ObjectMap.Entry<Set<DATA>> entry = origin.next();
+            copy.put(entry.getLongKey(), new ObjectArrayList<>(entry.getValue()));
         }
 
         map.clear();
 
-        for (Long2ObjectMap.Entry<Set<DATA>> e : copy.long2ObjectEntrySet()) {
-            long chunk = e.getLongKey();
-            for (DATA data : e.getValue()) {
-                TYPE type = this.dataToType().apply(data, level);
-                if (type == null) continue;
-                if (!validation.test(type)) continue;
-                this.add(level, chunk, data);
+        BiFunction<DATA, ServerLevel, TYPE> function = this.dataToType();
+
+        ObjectIterator<Long2ObjectMap.Entry<List<DATA>>> copied = Long2ObjectMaps.fastIterator(copy);
+
+        while (copied.hasNext()) {
+            Long2ObjectMap.Entry<List<DATA>> entry = copied.next();
+            long chunk = entry.getLongKey();
+            List<DATA> dataList = entry.getValue();
+
+            //noinspection ForLoopReplaceableByForEach
+            for (int i = 0; i < dataList.size(); i++) {
+                DATA data = dataList.get(i);
+                TYPE type = function.apply(data, level);
+
+                if (type != null && validation.test(type)) {
+                    this.add(level, chunk, data);
+                }
             }
         }
+    }
+
+    public void rebuildChunk(ServerLevel level, @NotNull ChunkPos chunkPos) {
+        int chunkX = chunkPos.x;
+        int chunkZ = chunkPos.z;
+        long chunk = chunkPos.toLong();
+
+        Predicate<TYPE> validation = this.validation();
+        BiFunction<DATA, ServerLevel, TYPE> function = this.dataToType();
+        ResourceLocation dim = dim(level);
+
+        if (this.dataTrustable() || validation == null) return;
+
+        Runnable rebuildTask = new Runnable() {
+            private int tries;
+
+            @Override
+            public void run() {
+                if (tries >= 20) return;
+                if (level.hasChunk(chunkX, chunkZ)) {
+                    LevelChunk levelChunk = level.getChunk(chunkX, chunkZ);
+                    if (!((DataRebuilder)levelChunk).duplicationless$rebuilt()) {
+                        ((DataRebuilder)levelChunk).duplicationless$setRebuilt();
+                        Long2ObjectMap<Set<DATA>> chunks = getLevelData(dim);
+                        if (chunks.isEmpty()) return;
+
+                        Set<DATA> dataSet = chunks.get(chunk);
+                        if (dataSet == null || dataSet.isEmpty()) return;
+
+                        List<DATA> copy = new ObjectArrayList<>(dataSet);
+
+                        dataSet.clear();
+
+                        for (DATA data : copy) {
+                            TYPE type = function.apply(data, level);
+                            if (type != null && validation.test(type)) {
+                                add(level, chunk, data);
+                            }
+                        }
+                    }
+                } else {
+                    tries++;
+                    Executor.runAfter(1, this);
+                }
+            }
+        };
+
+        Executor.run(rebuildTask);
     }
 
     public void add(ServerLevel level, long chunk, DATA data) {
@@ -98,6 +167,8 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
     public @NotNull CompoundTag save(@NotNull CompoundTag tag) {
         ListTag dimList = new ListTag();
 
+        Function<DATA, Tag> saveFunction = this.dataToTag();
+
         for (var dimEntry : this.data().object2ObjectEntrySet()) {
             CompoundTag dimTag = new CompoundTag();
             dimTag.putString("id", dimEntry.getKey().toString());
@@ -109,7 +180,7 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
 
                 ListTag dataList = new ListTag();
                 for (DATA data : entry.getValue()) {
-                    dataList.add(this.dataToTag().apply(data));
+                    dataList.add(saveFunction.apply(data));
                 }
                 chunkTag.put("data", dataList);
 
@@ -127,6 +198,8 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
     public @NotNull ChunkData<DATA, TYPE> load(@NotNull CompoundTag tag) {
         this.data().clear();
 
+        Function<Tag, DATA> loadFunction = this.tagToData();
+
         ListTag dimList = tag.getList("dimensions", Tag.TAG_COMPOUND);
         for (int d = 0; d < dimList.size(); d++) {
             CompoundTag dimTag = dimList.getCompound(d);
@@ -142,7 +215,7 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
                 ListTag dataList = chunkTag.getList("data", this.dataTagType());
                 Set<DATA> set = new ObjectOpenHashSet<>();
 
-                for (Tag dt : dataList) set.add(this.tagToData().apply(dt));
+                for (Tag dataTag : dataList) set.add(loadFunction.apply(dataTag));
                 map.put(chunk, set);
             }
         }
