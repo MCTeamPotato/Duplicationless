@@ -1,9 +1,10 @@
 package me.kall.duplicationless.data;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectMaps;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.*;
@@ -26,7 +27,9 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
 
     public abstract boolean dataTrustable();
     public abstract @Nullable Predicate<TYPE> validation();
+
     public abstract BiFunction<DATA, ServerLevel, TYPE> dataToType();
+
     public abstract Function<DATA, Tag> dataToTag();
     public abstract Function<Tag, DATA> tagToData();
     public abstract int dataTagType();
@@ -45,24 +48,27 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
 
         ResourceLocation dim = dim(level);
         Long2ObjectMap<Set<DATA>> map = this.getLevelData(dim);
-
-        Long2ObjectMap<List<DATA>> copy = new Long2ObjectOpenHashMap<>();
-        for (Long2ObjectMap.Entry<Set<DATA>> entry : map.long2ObjectEntrySet()) {
-            copy.put(entry.getLongKey(), new ObjectArrayList<>(entry.getValue()));
-        }
-
-        map.clear();
+        if (map.isEmpty()) return;
 
         BiFunction<DATA, ServerLevel, TYPE> function = this.dataToType();
+        ObjectIterator<Long2ObjectMap.Entry<Set<DATA>>> iterator = Long2ObjectMaps.fastIterator(map);
 
-        for (Long2ObjectMap.Entry<List<DATA>> entry : copy.long2ObjectEntrySet()) {
-            long chunk = entry.getLongKey();
-            for (DATA data : entry.getValue()) {
-                TYPE type = function.apply(data, level);
-                if (type == null) continue;
-                if (!validation.test(type)) continue;
-                this.add(level, chunk, data);
+        while (iterator.hasNext()) {
+            Long2ObjectMap.Entry<Set<DATA>> entry = iterator.next();
+            Set<DATA> dataSet = entry.getValue();
+            if (dataSet.isEmpty()) {
+                iterator.remove();
+                continue;
             }
+
+            Iterator<DATA> dataIterator = dataSet.iterator();
+            while (dataIterator.hasNext()) {
+                DATA data = dataIterator.next();
+                TYPE type = function.apply(data, level);
+                if (type == null || !validation.test(type)) dataIterator.remove();
+            }
+
+            if (dataSet.isEmpty()) iterator.remove();
         }
     }
 
