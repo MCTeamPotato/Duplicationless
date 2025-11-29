@@ -64,16 +64,16 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
 
         BiFunction<DATA, ServerLevel, TYPE> function = this.dataToType();
 
-        ObjectIterator<Long2ObjectMap.Entry<List<DATA>>> copiedIterator = Long2ObjectMaps.fastIterator(copy);
+        ObjectIterator<Long2ObjectMap.Entry<List<DATA>>> copied = Long2ObjectMaps.fastIterator(copy);
 
-        while (copiedIterator.hasNext()) {
-            Long2ObjectMap.Entry<List<DATA>> entry = copiedIterator.next();
+        while (copied.hasNext()) {
+            Long2ObjectMap.Entry<List<DATA>> entry = copied.next();
             long chunk = entry.getLongKey();
-            List<DATA> list = entry.getValue();
+            List<DATA> dataList = entry.getValue();
 
             //noinspection ForLoopReplaceableByForEach
-            for (int i = 0; i < list.size(); i++) {
-                DATA data = list.get(i);
+            for (int i = 0; i < dataList.size(); i++) {
+                DATA data = dataList.get(i);
                 TYPE type = function.apply(data, level);
 
                 if (type != null && validation.test(type)) {
