@@ -8,12 +8,16 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import me.kall.duplicationless.ext.DataRebuilder;
+import me.kall.duplicationless.util.Executor;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.*;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.saveddata.SavedData;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -81,6 +85,54 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
                 }
             }
         }
+    }
+
+    public void rebuildChunk(ServerLevel level, @NotNull ChunkPos chunkPos) {
+        int chunkX = chunkPos.x;
+        int chunkZ = chunkPos.z;
+        long chunk = chunkPos.toLong();
+
+        Predicate<TYPE> validation = this.validation();
+        BiFunction<DATA, ServerLevel, TYPE> function = this.dataToType();
+        ResourceLocation dim = dim(level);
+
+        if (this.dataTrustable() || validation == null) return;
+
+        Runnable rebuildTask = new Runnable() {
+            private int tries;
+
+            @Override
+            public void run() {
+                if (tries >= 20) return;
+                if (level.hasChunk(chunkX, chunkZ)) {
+                    LevelChunk levelChunk = level.getChunk(chunkX, chunkZ);
+                    if (!((DataRebuilder)levelChunk).duplicationless$rebuilt()) {
+                        ((DataRebuilder)levelChunk).duplicationless$setRebuilt();
+                        Long2ObjectMap<Set<DATA>> chunks = getLevelData(dim);
+                        if (chunks.isEmpty()) return;
+
+                        Set<DATA> dataSet = chunks.get(chunk);
+                        if (dataSet == null || dataSet.isEmpty()) return;
+
+                        List<DATA> copy = new ObjectArrayList<>(dataSet);
+
+                        dataSet.clear();
+
+                        for (DATA data : copy) {
+                            TYPE type = function.apply(data, level);
+                            if (type != null && validation.test(type)) {
+                                add(level, chunk, data);
+                            }
+                        }
+                    }
+                } else {
+                    tries++;
+                    Executor.runAfter(1, this);
+                }
+            }
+        };
+
+        Executor.run(rebuildTask);
     }
 
     public void add(ServerLevel level, long chunk, DATA data) {
