@@ -1,2 +1,2 @@
-# 1.0.4
-- Use Set<Long> instead of LongSet in Positions#nearestOne for better adaptation.
+# 1.0.5
+- Optimize ChunkData#rebuild for much faster execution.
