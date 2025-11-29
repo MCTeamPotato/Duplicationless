@@ -49,16 +49,18 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
         Long2ObjectMap<Set<DATA>> map = this.getLevelData(dim);
 
         Long2ObjectMap<Set<DATA>> copy = new Long2ObjectOpenHashMap<>();
-        for (Long2ObjectMap.Entry<Set<DATA>> e : map.long2ObjectEntrySet()) {
-            copy.put(e.getLongKey(), new ObjectOpenHashSet<>(e.getValue()));
+        for (Long2ObjectMap.Entry<Set<DATA>> entry : map.long2ObjectEntrySet()) {
+            copy.put(entry.getLongKey(), new ObjectOpenHashSet<>(entry.getValue()));
         }
 
         map.clear();
 
-        for (Long2ObjectMap.Entry<Set<DATA>> e : copy.long2ObjectEntrySet()) {
-            long chunk = e.getLongKey();
-            for (DATA data : e.getValue()) {
-                TYPE type = this.dataToType().apply(data, level);
+        BiFunction<DATA, ServerLevel, TYPE> function = this.dataToType();
+
+        for (Long2ObjectMap.Entry<Set<DATA>> entry : copy.long2ObjectEntrySet()) {
+            long chunk = entry.getLongKey();
+            for (DATA data : entry.getValue()) {
+                TYPE type = function.apply(data, level);
                 if (type == null) continue;
                 if (!validation.test(type)) continue;
                 this.add(level, chunk, data);
