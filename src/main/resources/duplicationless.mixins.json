@@ -11,6 +11,7 @@
   ],
   "mixins": [
     "data.EntityMixin",
+    "data.LevelChunkMixin",
     "event.EntityMixin",
     "event.ServerLevelMixin",
     "registry.BlockMixin",
