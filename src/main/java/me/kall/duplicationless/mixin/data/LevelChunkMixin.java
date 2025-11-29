@@ -1,9 +1,13 @@
 package me.kall.duplicationless.mixin.data;
 
 import me.kall.duplicationless.ext.DataRebuilder;
+import net.minecraft.world.level.chunk.LevelChunk;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 
+@Mixin(LevelChunk.class)
 public class LevelChunkMixin implements DataRebuilder {
-    private boolean duplicationless$rebuilt;
+    @Unique private boolean duplicationless$rebuilt;
 
     @Override
     public boolean duplicationless$rebuilt() {
