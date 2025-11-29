@@ -98,6 +98,8 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
     public @NotNull CompoundTag save(@NotNull CompoundTag tag) {
         ListTag dimList = new ListTag();
 
+        Function<DATA, Tag> saveFunction = this.dataToTag();
+
         for (var dimEntry : this.data().object2ObjectEntrySet()) {
             CompoundTag dimTag = new CompoundTag();
             dimTag.putString("id", dimEntry.getKey().toString());
@@ -109,7 +111,7 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
 
                 ListTag dataList = new ListTag();
                 for (DATA data : entry.getValue()) {
-                    dataList.add(this.dataToTag().apply(data));
+                    dataList.add(saveFunction.apply(data));
                 }
                 chunkTag.put("data", dataList);
 
@@ -127,6 +129,8 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
     public @NotNull ChunkData<DATA, TYPE> load(@NotNull CompoundTag tag) {
         this.data().clear();
 
+        Function<Tag, DATA> loadFunction = this.tagToData();
+
         ListTag dimList = tag.getList("dimensions", Tag.TAG_COMPOUND);
         for (int d = 0; d < dimList.size(); d++) {
             CompoundTag dimTag = dimList.getCompound(d);
@@ -142,7 +146,7 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
                 ListTag dataList = chunkTag.getList("data", this.dataTagType());
                 Set<DATA> set = new ObjectOpenHashSet<>();
 
-                for (Tag dt : dataList) set.add(this.tagToData().apply(dt));
+                for (Tag dataTag : dataList) set.add(loadFunction.apply(dataTag));
                 map.put(chunk, set);
             }
         }
