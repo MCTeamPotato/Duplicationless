@@ -1,9 +1,12 @@
 package me.kall.duplicationless.data;
 
+import it.unimi.dsi.fastutil.longs.Long2ObjectArrayMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectMaps;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.*;
@@ -48,8 +51,12 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
         ResourceLocation dim = dim(level);
         Long2ObjectMap<Set<DATA>> map = this.getLevelData(dim);
 
-        Long2ObjectMap<List<DATA>> copy = new Long2ObjectOpenHashMap<>();
-        for (Long2ObjectMap.Entry<Set<DATA>> entry : map.long2ObjectEntrySet()) {
+        Long2ObjectMap<List<DATA>> copy = new Long2ObjectArrayMap<>(map.size());
+
+        ObjectIterator<Long2ObjectMap.Entry<Set<DATA>>> origin = Long2ObjectMaps.fastIterator(map);
+
+        while (origin.hasNext()) {
+            Long2ObjectMap.Entry<Set<DATA>> entry = origin.next();
             copy.put(entry.getLongKey(), new ObjectArrayList<>(entry.getValue()));
         }
 
@@ -57,13 +64,21 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
 
         BiFunction<DATA, ServerLevel, TYPE> function = this.dataToType();
 
-        for (Long2ObjectMap.Entry<List<DATA>> entry : copy.long2ObjectEntrySet()) {
+        ObjectIterator<Long2ObjectMap.Entry<List<DATA>>> copiedIterator = Long2ObjectMaps.fastIterator(copy);
+
+        while (copiedIterator.hasNext()) {
+            Long2ObjectMap.Entry<List<DATA>> entry = copiedIterator.next();
             long chunk = entry.getLongKey();
-            for (DATA data : entry.getValue()) {
+            List<DATA> list = entry.getValue();
+
+            //noinspection ForLoopReplaceableByForEach
+            for (int i = 0; i < list.size(); i++) {
+                DATA data = list.get(i);
                 TYPE type = function.apply(data, level);
-                if (type == null) continue;
-                if (!validation.test(type)) continue;
-                this.add(level, chunk, data);
+
+                if (type != null && validation.test(type)) {
+                    this.add(level, chunk, data);
+                }
             }
         }
     }
