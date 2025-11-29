@@ -3,6 +3,7 @@ package me.kall.duplicationless.data;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.*;
@@ -14,10 +15,7 @@ import net.minecraft.world.level.saveddata.SavedData;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Collections;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -48,16 +46,16 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
         ResourceLocation dim = dim(level);
         Long2ObjectMap<Set<DATA>> map = this.getLevelData(dim);
 
-        Long2ObjectMap<Set<DATA>> copy = new Long2ObjectOpenHashMap<>();
+        Long2ObjectMap<List<DATA>> copy = new Long2ObjectOpenHashMap<>();
         for (Long2ObjectMap.Entry<Set<DATA>> entry : map.long2ObjectEntrySet()) {
-            copy.put(entry.getLongKey(), new ObjectOpenHashSet<>(entry.getValue()));
+            copy.put(entry.getLongKey(), new ObjectArrayList<>(entry.getValue()));
         }
 
         map.clear();
 
         BiFunction<DATA, ServerLevel, TYPE> function = this.dataToType();
 
-        for (Long2ObjectMap.Entry<Set<DATA>> entry : copy.long2ObjectEntrySet()) {
+        for (Long2ObjectMap.Entry<List<DATA>> entry : copy.long2ObjectEntrySet()) {
             long chunk = entry.getLongKey();
             for (DATA data : entry.getValue()) {
                 TYPE type = function.apply(data, level);
