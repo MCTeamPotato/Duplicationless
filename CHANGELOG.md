@@ -1,3 +1,2 @@
-# 1.0.5
-- Optimize ChunkData#rebuild for much faster execution.
-- introduce rebuildChunk for chunk-specific data rebuilding.
+# 1.0.6
+- introduce ReloadCommandEvent that triggers when `/reload` is executed.
