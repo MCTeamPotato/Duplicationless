@@ -1,2 +1,2 @@
-# 1.0.6
-- introduce ReloadCommandEvent that triggers when `/reload` is executed.
+# 1.0.7
+- Fix ChunkData#rebuildChunk logic.

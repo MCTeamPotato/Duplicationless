@@ -1,14 +1,10 @@
 package me.kall.duplicationless.data;
 
-import it.unimi.dsi.fastutil.longs.Long2ObjectArrayMap;
-import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
-import it.unimi.dsi.fastutil.longs.Long2ObjectMaps;
-import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.longs.*;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-import me.kall.duplicationless.ext.DataRebuilder;
 import me.kall.duplicationless.util.Executor;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.*;
@@ -17,7 +13,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.saveddata.SavedData;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -39,6 +34,8 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
     public abstract Function<DATA, Tag> dataToTag();
     public abstract Function<Tag, DATA> tagToData();
     public abstract int dataTagType();
+
+    private final LongSet rebuiltChunks = new LongOpenHashSet();
 
     private @NotNull Long2ObjectMap<Set<DATA>> getLevelData(@NotNull ResourceLocation dim) {
         return this.data().computeIfAbsent(dim, d -> new Long2ObjectOpenHashMap<>());
@@ -105,9 +102,8 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
             public void run() {
                 if (tries >= 20) return;
                 if (level.hasChunk(chunkX, chunkZ)) {
-                    LevelChunk levelChunk = level.getChunk(chunkX, chunkZ);
-                    if (!((DataRebuilder)levelChunk).duplicationless$rebuilt()) {
-                        ((DataRebuilder)levelChunk).duplicationless$setRebuilt();
+                    if (!rebuiltChunks.contains(chunk)) {
+                        rebuiltChunks.add(chunk);
                         Long2ObjectMap<Set<DATA>> chunks = getLevelData(dim);
                         if (chunks.isEmpty()) return;
 
