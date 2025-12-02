@@ -13,6 +13,7 @@
     "data.EntityMixin",
     "data.LevelChunkMixin",
     "event.EntityMixin",
+    "event.ReloadCommandMixin",
     "event.ServerLevelMixin",
     "registry.BlockMixin",
     "registry.EntityTypeMixin",
