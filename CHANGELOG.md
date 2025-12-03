@@ -1,2 +1,2 @@
-# 1.0.7
-- Fix ChunkData#rebuildChunk logic.
+# 1.0.8
+- Introduce Positions#nearestSort helper methods.
