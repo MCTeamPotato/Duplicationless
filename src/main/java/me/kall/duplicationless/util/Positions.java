@@ -1,6 +1,6 @@
 package me.kall.duplicationless.util;
 
-import it.unimi.dsi.fastutil.longs.LongConsumer;
+import it.unimi.dsi.fastutil.longs.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.util.Mth;
@@ -42,6 +42,35 @@ public final class Positions {
         }
 
         return nearest;
+    }
+
+    public static @NotNull LongSortedSet nearestSort(@NotNull final Set<Long> positions, @NotNull final BlockPos target) {
+        return nearestSort(positions, target.getX(), target.getY(), target.getZ());
+    }
+
+    public static @NotNull LongSortedSet nearestSort(@NotNull final Set<Long> positions, final long target) {
+        return nearestSort(positions, BlockPos.getX(target), BlockPos.getY(target), BlockPos.getZ(target));
+    }
+
+    public static @NotNull LongSortedSet nearestSort(@NotNull final Set<Long> positions, final int targetX, final int targetY, final int targetZ) {
+        LongComparator comparator = (first, second) -> {
+            final long firstDistX = BlockPos.getX(first) - targetX;
+            final long firstDistY = BlockPos.getY(first) - targetY;
+            final long firstDistZ = BlockPos.getZ(first) - targetZ;
+
+            final long secondDistX = BlockPos.getX(second) - targetX;
+            final long secondDistY = BlockPos.getY(second) - targetY;
+            final long secondDistZ = BlockPos.getZ(second) - targetZ;
+
+            final long firstDistSqr = firstDistX * firstDistX + firstDistY * firstDistY + firstDistZ * firstDistZ;
+            final long secondDistSqr = secondDistX * secondDistX + secondDistY * secondDistY + secondDistZ * secondDistZ;
+
+            return firstDistSqr != secondDistSqr ? Long.compare(firstDistSqr, secondDistSqr) : Long.compare(first, second);
+        };
+
+        final LongSortedSet sortedSet = new LongRBTreeSet(comparator);
+        sortedSet.addAll(positions);
+        return LongSortedSets.unmodifiable(sortedSet);
     }
 
     public static long toChunk(@NotNull BlockPos pos) {
