@@ -1,2 +1,2 @@
-# 1.0.8
-- Introduce Positions#nearestSort helper methods.
+# 1.0.9
+- Introduce IdData api
