@@ -245,6 +245,27 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
         }
     }
 
+    public static abstract class IdData extends ChunkData<Integer, Entity> {
+        @Override public abstract @NotNull Object2ObjectMap<ResourceLocation, Long2ObjectMap<Set<Integer>>> data();
+        @Override public abstract @Nullable Predicate<Entity> validation();
+
+        @Override public BiFunction<Integer, ServerLevel, Entity> dataToType() {
+            return (id, level) -> level.getEntity(id);
+        }
+
+        @Override public Function<Integer, Tag> dataToTag() {
+            return IntTag::valueOf;
+        }
+
+        @Override public Function<Tag, Integer> tagToData() {
+            return tag -> tag instanceof IntTag ? ((IntTag)tag).getAsInt() : -1;
+        }
+
+        @Override public int dataTagType() {
+            return Tag.TAG_INT;
+        }
+    }
+
     public static abstract class BlockData extends ChunkData<Long, BlockState> {
         @Override public abstract @NotNull Object2ObjectMap<ResourceLocation, Long2ObjectMap<Set<Long>>> data();
         @Override public abstract @Nullable Predicate<BlockState> validation();
@@ -260,7 +281,7 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
         }
 
         @Override public Function<Tag, Long> tagToData() {
-            return tag -> tag instanceof LongTag lg ? lg.getAsLong() : ZERO;
+            return tag -> tag instanceof LongTag ? ((LongTag)tag).getAsLong() : ZERO;
         }
 
         @Override public int dataTagType() {
