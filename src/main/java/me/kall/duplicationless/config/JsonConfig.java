@@ -1,7 +1,7 @@
 package me.kall.duplicationless.config;
 
 import com.google.gson.*;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import net.minecraftforge.fml.loading.FMLLoader;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -19,7 +19,7 @@ import java.util.stream.StreamSupport;
 public class JsonConfig {
     private final Path configPath;
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
-    private final Map<String, JsonElement> configMap = new Object2ObjectOpenHashMap<>();
+    private final Map<String, JsonElement> configMap = new Object2ObjectLinkedOpenHashMap<>();
 
     public static final Path CONFIG_DIR = FMLLoader.getGamePath().resolve("config");
 
@@ -51,7 +51,7 @@ public class JsonConfig {
         try (BufferedReader reader = new BufferedReader(new FileReader(configPath.toFile()))) {
             JsonObject fileConfig = JsonParser.parseReader(reader).getAsJsonObject();
 
-            Map<String, JsonElement> defaultConfig = new Object2ObjectOpenHashMap<>(this.configMap);
+            Map<String, JsonElement> defaultConfig = new Object2ObjectLinkedOpenHashMap<>(this.configMap);
 
             this.configMap.clear();
             for (Map.Entry<String, JsonElement> entry : fileConfig.entrySet()) {

@@ -1,2 +1,2 @@
-# 1.0.9
-- Introduce IdData api
+# 1.0.10
+- Use Object2ObjectLinkedOpenHashMap in config building for better user experience
