@@ -1,2 +1,2 @@
-# 1.0.11
-- Introduce `ResourceLocations#of` helper methods
+# 1.0.12
+- Clean up all the resources in EntityTracker on ServerStoppedEvent

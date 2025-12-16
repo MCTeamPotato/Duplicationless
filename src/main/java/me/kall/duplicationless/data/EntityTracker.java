@@ -20,6 +20,7 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
 import net.minecraftforge.event.server.ServerAboutToStartEvent;
+import net.minecraftforge.event.server.ServerStoppedEvent;
 import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -44,7 +45,7 @@ public final class EntityTracker {
 
     public static final class EntityFilterRegistryEvent extends Event {
         public void register(ResourceLocation filterId, Predicate<Entity> filter) {
-            if (FILTERS.containsKey(filterId)) LOGGER.warn("[EntityTracker] Duplicate filter ID detected: {}. This is normal if you are creating multiple singleplayer worlds. Overriding.", filterId.toString());
+            if (FILTERS.containsKey(filterId)) LOGGER.warn("[EntityTracker] Duplicate filter ID detected: {}. Overriding.", filterId.toString());
             FILTERS.put(filterId, filter);
         }
 
@@ -155,6 +156,13 @@ public final class EntityTracker {
             Runnable task;
             while ((task = EntityTracker.UPDATE_TASKS.poll()) != null) task.run();
         }
+    }
+
+    @SubscribeEvent
+    public static void stopServer(ServerStoppedEvent event) {
+        UPDATE_TASKS.clear();
+        ENTITIES.clear();
+        FILTERS.clear();
     }
 
     private static final class EntityStorage {
