@@ -1,2 +1,2 @@
-# 1.0.12
-- Clean up all the resources in EntityTracker on ServerStoppedEvent
+# 1.0.13
+- Change JsonConfig#saveToFile visibility: from private to public
