@@ -83,7 +83,7 @@ public class JsonConfig {
         }
     }
 
-    private void saveToFile() {
+    public void saveToFile() {
         try (Writer writer = new FileWriter(configPath.toFile())) {
             gson.toJson(configMap, writer);
         } catch (IOException e) {
