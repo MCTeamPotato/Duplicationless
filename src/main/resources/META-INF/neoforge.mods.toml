@@ -9,7 +9,6 @@ version = "${version}"
 displayName = "Duplicationless"
 authors = "Kall"
 description = '''
-A Minecraft mod
 '''
 #logoFile = ""
 
