@@ -141,7 +141,7 @@ tasks.register("publishCurseForge", TaskPublishCurseForge) {
     mainFile.changelog = changelog
     mainFile.changelogType = "markdown"
     mainFile.addModLoader(isNeo ? "NeoForge" : "Forge")
-    mainFile.addJavaVersion(javaVersion)
+    mainFile.addJavaVersion(javaVersionInt)
     mainFile.addGameVersion(minecraft_version)
 
     UploadArtifact sourcesFile = mainFile.withAdditionalFile(sourcesJar)
