@@ -67,6 +67,10 @@ public final class EntityTracker {
         });
     }
 
+    public static @NotNull @UnmodifiableView IntSet getEntities(@NotNull ServerLevel level, long chunkPos, Class<?> entityClass) {
+        return getInternal(level, chunkPos, entityStorage -> entityStorage.entitiesByClass == null ? null : entityStorage.entitiesByClass.get(entityClass));
+    }
+
     public static @NotNull @UnmodifiableView IntSet getEntities(@NotNull ServerLevel level, long chunkPos, ResourceLocation filter) {
         return getInternal(level, chunkPos, entityStorage -> entityStorage.entitiesByFilter == null ? null : entityStorage.entitiesByFilter.get(filter));
     }
@@ -101,9 +105,9 @@ public final class EntityTracker {
             EntityStorage entityStorage = chunks.computeIfAbsent(chunkPos, key -> new EntityStorage());
 
             if (add) {
-                entityStorage.add(id, entityType, isNone, filters);
+                entityStorage.add(id, entityType, entity.getClass(), isNone, filters);
             } else {
-                entityStorage.remove(id, entityType, isNone, filters);
+                entityStorage.remove(id, entityType, entity.getClass(), isNone, filters);
                 if (entityStorage.isEmpty()) {
                     chunks.remove(chunkPos);
                     if (chunks.isEmpty()) ENTITIES.remove(dim);
@@ -169,18 +173,22 @@ public final class EntityTracker {
         @Nullable IntSet entities;
         @Nullable Object2ObjectMap<ResourceLocation, IntSet> entitiesByType;
         @Nullable Object2ObjectMap<ResourceLocation, IntSet> entitiesByFilter;
+        @Nullable Object2ObjectMap<Class<?>, IntSet> entitiesByClass;
 
         boolean isEmpty() {
-            return entities == null && entitiesByType == null && entitiesByFilter == null;
+            return entities == null && entitiesByType == null && entitiesByFilter == null && entitiesByClass == null;
         }
 
-        void add(int entityId, ResourceLocation type, boolean isNone, @Nullable ObjectList<ResourceLocation> matched) {
+        void add(int entityId, ResourceLocation type, Class<?> entityClass, boolean isNone, @Nullable ObjectList<ResourceLocation> matched) {
             updateEntities(entityId, true);
 
             if (!isNone) {
                 if (entitiesByType == null) entitiesByType = new Object2ObjectOpenHashMap<>();
                 update(entitiesByType, type, entityId, true);
             }
+
+            if (entitiesByClass == null) entitiesByClass = new Object2ObjectOpenHashMap<>();
+            update(entitiesByClass, entityClass, entityId, true);
 
             if (matched != null && !matched.isEmpty()) {
                 if (entitiesByFilter == null) entitiesByFilter = new Object2ObjectOpenHashMap<>();
@@ -190,12 +198,17 @@ public final class EntityTracker {
             }
         }
 
-        void remove(int entityId, ResourceLocation type, boolean isNone, @Nullable ObjectList<ResourceLocation> matched) {
+        void remove(int entityId, ResourceLocation type, Class<?> entityClass, boolean isNone, @Nullable ObjectList<ResourceLocation> matched) {
             updateEntities(entityId, false);
 
             if (!isNone && entitiesByType != null) {
                 update(entitiesByType, type, entityId, false);
                 if (entitiesByType.isEmpty()) entitiesByType = null;
+            }
+
+            if (entitiesByClass != null) {
+                update(entitiesByClass, entityClass, entityId, false);
+                if (entitiesByClass.isEmpty()) entitiesByClass = null;
             }
 
             if (matched != null && !matched.isEmpty() && entitiesByFilter != null) {
@@ -216,7 +229,7 @@ public final class EntityTracker {
             }
         }
 
-        private static void update(Object2ObjectMap<ResourceLocation, IntSet> map, ResourceLocation key, int entityId, boolean add) {
+        private static <K> void update(Object2ObjectMap<K, IntSet> map, K key, int entityId, boolean add) {
             if (add) {
                 map.computeIfAbsent(key, k -> new IntOpenHashSet()).add(entityId);
             } else {
