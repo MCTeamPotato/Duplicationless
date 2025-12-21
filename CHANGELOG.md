@@ -1,2 +1,2 @@
-# 1.0.13
-- Change JsonConfig#saveToFile visibility: from private to public
+# 1.0.14
+- Introduce entitiesByClass. Now you can get entities by Class<?> in our EntityTracker
