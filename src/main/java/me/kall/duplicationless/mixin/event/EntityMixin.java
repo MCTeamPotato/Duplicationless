@@ -4,9 +4,9 @@ import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import me.kall.duplicationless.event.EntityChunkChangeEvent;
 import net.minecraft.core.SectionPos;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.Level;
 import net.minecraftforge.common.MinecraftForge;
 import org.jetbrains.annotations.NotNull;
 import org.spongepowered.asm.mixin.Mixin;
@@ -30,7 +30,7 @@ public abstract class EntityMixin {
         Entity entity = (Entity) (Object) this;
         final long chunkBefore = this.chunkPosition().toLong();
 
-        boolean isSectionChange = SectionPos.blockToSectionCoord(this.getY()) != SectionPos.blockToSectionCoord(y);
+        boolean isSectionChange = SectionPos.blockToSectionCoord(Mth.floor(this.getY())) != SectionPos.blockToSectionCoord(Mth.floor(y));
         if (isSectionChange) MinecraftForge.EVENT_BUS.post(new EntityChunkChangeEvent.Section.Before(entity));
 
         original.call(x, y, z);

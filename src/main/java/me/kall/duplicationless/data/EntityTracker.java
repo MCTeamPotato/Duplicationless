@@ -11,6 +11,7 @@ import me.kall.duplicationless.event.EntityChunkChangeEvent;
 import me.kall.duplicationless.ext.RegistryEntry;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.core.SectionPos;
@@ -134,7 +135,7 @@ public final class EntityTracker {
 
     private static void update(@NotNull Entity entity, @NotNull ServerLevel level, boolean add) {
         final long chunkPos = entity.chunkPosition().toLong();
-        final int sectionIndex = SectionPos.blockToSectionCoord(entity.getY());
+        final int sectionIndex = SectionPos.blockToSectionCoord(Mth.floor(entity.getY()));
         final ResourceLocation dim = level.dimension().location();
         final int id = entity.getId();
         final ResourceLocation entityType = RegistryEntry.get(entity.getType());
