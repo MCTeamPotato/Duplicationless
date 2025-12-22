@@ -19,4 +19,22 @@ public class EntityChunkChangeEvent extends EntityEvent {
             super(entity);
         }
     }
+
+    public static class Section extends EntityChunkChangeEvent {
+        public Section(Entity entity) {
+            super(entity);
+        }
+
+        public static final class Before extends Section {
+            public Before(Entity entity) {
+                super(entity);
+            }
+        }
+
+        public static final class After extends Section {
+            public After(Entity entity) {
+                super(entity);
+            }
+        }
+    }
 }
