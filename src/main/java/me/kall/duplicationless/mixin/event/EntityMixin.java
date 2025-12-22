@@ -3,41 +3,35 @@ package me.kall.duplicationless.mixin.event;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import me.kall.duplicationless.event.EntityChunkChangeEvent;
+import me.kall.duplicationless.util.Positions;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.level.ChunkPos;
 import net.minecraftforge.common.MinecraftForge;
 import org.jetbrains.annotations.NotNull;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(Entity.class)
 public abstract class EntityMixin {
-    @Shadow public abstract ChunkPos chunkPosition();
     @Shadow public abstract double getY();
-
-    @Inject(method = "setPosRaw", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/ChunkPos;<init>(Lnet/minecraft/core/BlockPos;)V"))
-    private void beforeChunkPosUpdate(CallbackInfo ci) {
-        MinecraftForge.EVENT_BUS.post(new EntityChunkChangeEvent.Before((Entity) (Object) this));
-    }
+    @Shadow public abstract BlockPos blockPosition();
 
     @WrapMethod(method = "setPosRaw")
     private void onChunkUpdate(double x, double y, double z, @NotNull Operation<Void> original) {
-        Entity entity = (Entity) (Object) this;
-        final long chunkBefore = this.chunkPosition().toLong();
+        final Entity entity = (Entity) (Object) this;
+        final long previousChunk = Positions.toChunk(this.blockPosition());
+        final long nextChunk = Positions.toChunk(x, z);
+        final boolean differentChunk = previousChunk != nextChunk;
 
-        boolean isSectionChange = SectionPos.blockToSectionCoord(this.getY()) != SectionPos.blockToSectionCoord(y);
+        boolean isSectionChange = SectionPos.blockToSectionCoord(Mth.floor(this.getY())) != SectionPos.blockToSectionCoord(Mth.floor(y));
+
         if (isSectionChange) MinecraftForge.EVENT_BUS.post(new EntityChunkChangeEvent.Section.Before(entity));
-
+        if (differentChunk) MinecraftForge.EVENT_BUS.post(new EntityChunkChangeEvent.Before(entity));
         original.call(x, y, z);
 
         if (isSectionChange) MinecraftForge.EVENT_BUS.post(new EntityChunkChangeEvent.Section.After(entity));
-
-        final long chunkAfter = this.chunkPosition().toLong();
-        if (chunkBefore == chunkAfter) return;
-        MinecraftForge.EVENT_BUS.post(new EntityChunkChangeEvent.After(entity));
+        if (differentChunk) MinecraftForge.EVENT_BUS.post(new EntityChunkChangeEvent.After(entity));
     }
 }
