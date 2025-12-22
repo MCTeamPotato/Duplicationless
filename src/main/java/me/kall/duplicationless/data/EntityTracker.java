@@ -1,8 +1,6 @@
 package me.kall.duplicationless.data;
 
-import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
-import it.unimi.dsi.fastutil.ints.IntSet;
-import it.unimi.dsi.fastutil.ints.IntSets;
+import it.unimi.dsi.fastutil.ints.*;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
@@ -15,6 +13,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.core.SectionPos;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
@@ -39,13 +38,14 @@ import java.util.function.Predicate;
 @Mod.EventBusSubscriber(modid = Duplicationless.MOD_ID)
 public final class EntityTracker {
     private static final Logger LOGGER = LogManager.getLogger(EntityTracker.class);
-    private static final Object2ObjectMap<ResourceLocation, Long2ObjectMap<EntityStorage>> ENTITIES = new Object2ObjectOpenHashMap<>();
+    private static final Object2ObjectMap<ResourceLocation, Long2ObjectMap<Int2ObjectMap<EntityStorage>>> ENTITIES = new Object2ObjectOpenHashMap<>();
     private static final Object2ObjectMap<ResourceLocation, Predicate<Entity>> FILTERS = new Object2ObjectOpenHashMap<>();
     private static final ConcurrentLinkedQueue<Runnable> UPDATE_TASKS = new ConcurrentLinkedQueue<>();
 
     public static final class EntityFilterRegistryEvent extends Event {
         public void register(ResourceLocation filterId, Predicate<Entity> filter) {
-            if (FILTERS.containsKey(filterId)) LOGGER.warn("[EntityTracker] Duplicate filter ID detected: {}. Overriding.", filterId.toString());
+            if (FILTERS.containsKey(filterId))
+                LOGGER.warn("[EntityTracker] Duplicate filter ID detected: {}. Overriding.", filterId);
             FILTERS.put(filterId, filter);
         }
 
@@ -78,13 +78,55 @@ public final class EntityTracker {
     private static @NotNull @UnmodifiableView IntSet getInternal(@NotNull ServerLevel level, long chunkPos, Function<EntityStorage, @Nullable IntSet> extractor) {
         if (!level.getServer().isSameThread()) throw new UnsupportedOperationException("EntityTracker is only available on the server thread!");
 
-        Long2ObjectMap<EntityStorage> chunks = ENTITIES.get(level.dimension().location());
+        Long2ObjectMap<Int2ObjectMap<EntityStorage>> chunks = ENTITIES.get(level.dimension().location());
         if (chunks == null || chunks.isEmpty()) return IntSets.emptySet();
 
-        EntityStorage storage = chunks.get(chunkPos);
-        if (storage == null) return IntSets.emptySet();
+        Int2ObjectMap<EntityStorage> sections = chunks.get(chunkPos);
+        if (sections == null || sections.isEmpty()) return IntSets.emptySet();
 
-        IntSet set = extractor.apply(storage);
+        IntSet entities = new IntOpenHashSet();
+        for (EntityStorage entityStorage : sections.values()) {
+            IntSet set = extractor.apply(entityStorage);
+            if (set != null) entities.addAll(set);
+        }
+        if (entities.isEmpty()) return IntSets.emptySet();
+        return IntSets.unmodifiable(entities);
+    }
+
+    public static @NotNull @UnmodifiableView IntSet getEntities(@NotNull ServerLevel level, long chunkPos, int sectionIndex) {
+        return getInternal(level, chunkPos, sectionIndex, entityStorage -> entityStorage.entities);
+    }
+
+    public static @NotNull @UnmodifiableView IntSet getEntities(@NotNull ServerLevel level, long chunkPos, int sectionIndex, EntityType<?> type) {
+        return getInternal(level, chunkPos, sectionIndex, entityStorage -> {
+            ResourceLocation id = RegistryEntry.get(type);
+            if (id.equals(RegistryEntry.NONE)) return null;
+            if (entityStorage.entitiesByType == null) return null;
+            return entityStorage.entitiesByType.get(id);
+        });
+    }
+
+    public static @NotNull @UnmodifiableView IntSet getEntities(@NotNull ServerLevel level, long chunkPos, int sectionIndex, Class<?> entityClass) {
+        return getInternal(level, chunkPos, sectionIndex, entityStorage -> entityStorage.entitiesByClass == null ? null : entityStorage.entitiesByClass.get(entityClass));
+    }
+
+    public static @NotNull @UnmodifiableView IntSet getEntities(@NotNull ServerLevel level, long chunkPos, int sectionIndex, ResourceLocation filter) {
+        return getInternal(level, chunkPos, sectionIndex, entityStorage -> entityStorage.entitiesByFilter == null ? null : entityStorage.entitiesByFilter.get(filter));
+    }
+
+    private static @NotNull @UnmodifiableView IntSet getInternal(@NotNull ServerLevel level, long chunkPos, int sectionIndex, Function<EntityStorage, @Nullable IntSet> extractor) {
+        if (!level.getServer().isSameThread()) throw new UnsupportedOperationException("EntityTracker is only available on the server thread!");
+
+        Long2ObjectMap<Int2ObjectMap<EntityStorage>> chunks = ENTITIES.get(level.dimension().location());
+        if (chunks == null || chunks.isEmpty()) return IntSets.emptySet();
+
+        Int2ObjectMap<EntityStorage> sections = chunks.get(chunkPos);
+        if (sections == null || sections.isEmpty()) return IntSets.emptySet();
+
+        EntityStorage entityStorage = sections.get(sectionIndex);
+        if (entityStorage == null || entityStorage.isEmpty()) return IntSets.emptySet();
+
+        IntSet set = extractor.apply(entityStorage);
         if (set == null || set.isEmpty()) return IntSets.emptySet();
 
         return IntSets.unmodifiable(set);
@@ -92,6 +134,7 @@ public final class EntityTracker {
 
     private static void update(@NotNull Entity entity, @NotNull ServerLevel level, boolean add) {
         final long chunkPos = entity.chunkPosition().toLong();
+        final int sectionIndex = SectionPos.blockToSectionCoord(entity.getY());
         final ResourceLocation dim = level.dimension().location();
         final int id = entity.getId();
         final ResourceLocation entityType = RegistryEntry.get(entity.getType());
@@ -101,16 +144,20 @@ public final class EntityTracker {
         final ObjectList<ResourceLocation> filters = Filterable.getMatched(entity);
 
         UPDATE_TASKS.add(() -> {
-            Long2ObjectMap<EntityStorage> chunks = ENTITIES.computeIfAbsent(dim, key -> new Long2ObjectOpenHashMap<>());
-            EntityStorage entityStorage = chunks.computeIfAbsent(chunkPos, key -> new EntityStorage());
+            Long2ObjectMap<Int2ObjectMap<EntityStorage>> chunks = ENTITIES.computeIfAbsent(dim, key -> new Long2ObjectOpenHashMap<>());
+            Int2ObjectMap<EntityStorage> sections = chunks.computeIfAbsent(chunkPos, key -> new Int2ObjectOpenHashMap<>());
+            EntityStorage entityStorage = sections.computeIfAbsent(sectionIndex, key -> new EntityStorage());
 
             if (add) {
                 entityStorage.add(id, entityType, entity.getClass(), isNone, filters);
             } else {
                 entityStorage.remove(id, entityType, entity.getClass(), isNone, filters);
                 if (entityStorage.isEmpty()) {
-                    chunks.remove(chunkPos);
-                    if (chunks.isEmpty()) ENTITIES.remove(dim);
+                    sections.remove(sectionIndex);
+                    if (sections.isEmpty()) {
+                        chunks.remove(chunkPos);
+                        if (chunks.isEmpty()) ENTITIES.remove(dim);
+                    }
                 }
             }
         });
@@ -150,6 +197,22 @@ public final class EntityTracker {
     public static void afterChunkChange(EntityChunkChangeEvent.@NotNull After event) {
         Entity entity = event.getEntity();
         if (entity.level instanceof ServerLevel level) {
+            update(entity, level, true);
+        }
+    }
+
+    @SubscribeEvent
+    public static void beforeSectionChange(EntityChunkChangeEvent.Section.@NotNull Before event) {
+        Entity entity = event.getEntity();
+        if (entity.level() instanceof ServerLevel level) {
+            update(entity, level, false);
+        }
+    }
+
+    @SubscribeEvent
+    public static void afterSectionChange(EntityChunkChangeEvent.Section.@NotNull After event) {
+        Entity entity = event.getEntity();
+        if (entity.level() instanceof ServerLevel level) {
             update(entity, level, true);
         }
     }

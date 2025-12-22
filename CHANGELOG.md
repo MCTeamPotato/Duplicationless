@@ -1,2 +1,2 @@
-# 1.0.14
-- Introduce entitiesByClass. Now you can get entities by Class<?> in our EntityTracker
+# 1.1.0
+- EntityTracker now supports LevelChunkSection index.
