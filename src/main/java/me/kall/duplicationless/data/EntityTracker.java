@@ -31,6 +31,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -52,12 +53,12 @@ public final class EntityTracker {
         }
     }
 
-    @Deprecated(since = "Use getEntityList instead, the addAll call in this logic is somehow expensive")
+    @Deprecated(since = "Use getEntityList instead, the addAll call in this logic is expensive")
     public static @NotNull IntSet getEntities(@NotNull ServerLevel level, long chunkPos) {
         return getInternal(level, chunkPos, entityStorage -> entityStorage.entities);
     }
 
-    @Deprecated(since = "Use getEntityList instead, the addAll call in this logic is somehow expensive")
+    @Deprecated(since = "Use getEntityList instead, the addAll call in this logic is expensive")
     public static @NotNull IntSet getEntities(@NotNull ServerLevel level, long chunkPos, EntityType<?> type) {
         return getInternal(level, chunkPos, entityStorage -> {
             ResourceLocation id = RegistryEntry.get(type);
@@ -67,17 +68,17 @@ public final class EntityTracker {
         });
     }
 
-    @Deprecated(since = "Use getEntityList instead, the addAll call in this logic is somehow expensive")
+    @Deprecated(since = "Use getEntityList instead, the addAll call in this logic is expensive")
     public static @NotNull IntSet getEntities(@NotNull ServerLevel level, long chunkPos, ResourceLocation filter) {
         return getInternal(level, chunkPos, entityStorage -> entityStorage.entitiesByFilter == null ? null : entityStorage.entitiesByFilter.get(filter));
     }
 
     public static ObjectList<IntSet> getEntityList(@NotNull ServerLevel level, long chunkPos) {
-        return getInternalList(level, chunkPos, entityStorage -> entityStorage.entities);
+        return getEntityListInternal(level, chunkPos, entityStorage -> entityStorage.entities);
     }
 
     public static ObjectList<IntSet> getEntityList(@NotNull ServerLevel level, long chunkPos, EntityType<?> type) {
-        return getInternalList(level, chunkPos, entityStorage -> {
+        return getEntityListInternal(level, chunkPos, entityStorage -> {
             ResourceLocation id = RegistryEntry.get(type);
             if (id.equals(RegistryEntry.NONE)) return null;
             if (entityStorage.entitiesByType == null) return null;
@@ -86,43 +87,68 @@ public final class EntityTracker {
     }
 
     public static ObjectList<IntSet> getEntityList(@NotNull ServerLevel level, long chunkPos, ResourceLocation filter) {
-        return getInternalList(level, chunkPos, entityStorage -> entityStorage.entitiesByFilter == null ? null : entityStorage.entitiesByFilter.get(filter));
+        return getEntityListInternal(level, chunkPos, entityStorage -> entityStorage.entitiesByFilter == null ? null : entityStorage.entitiesByFilter.get(filter));
     }
 
-    private static ObjectList<IntSet> getInternalList(@NotNull ServerLevel level, long chunkPos, Function<EntityStorage, @Nullable IntSet> extractor) {
+    private static ObjectList<IntSet> getEntityListInternal(@NotNull ServerLevel level, long chunkPos, Function<EntityStorage, @Nullable IntSet> extractor) {
         if (!level.getServer().isSameThread()) throw new UnsupportedOperationException("EntityTracker is only available on the server thread!");
 
-        Long2ObjectMap<Int2ObjectMap<EntityStorage>> chunks = ENTITIES.get(level.dimension().location());
-        if (chunks == null || chunks.isEmpty()) return ObjectLists.emptyList();
-
-        Int2ObjectMap<EntityStorage> sections = chunks.get(chunkPos);
-        if (sections == null || sections.isEmpty()) return ObjectLists.emptyList();
-
+        Int2ObjectMap<EntityStorage> sections = EntityTracker.chunkSections(level, chunkPos);
+        if (sections.isEmpty()) return ObjectLists.emptyList();
         ObjectList<IntSet> entities = new ObjectArrayList<>(sections.size());
         for (EntityStorage entityStorage : sections.values()) {
             IntSet set = extractor.apply(entityStorage);
-            if (set != null) entities.add(IntSets.unmodifiable(set));
+            if (set != null && !set.isEmpty()) entities.add(IntSets.unmodifiable(set));
         }
         if (entities.isEmpty()) return ObjectLists.emptyList();
         return entities;
     }
 
+    @Deprecated(since = "Use getEntityListInternal instead, the addAll call in this logic is expensive")
     private static @NotNull IntSet getInternal(@NotNull ServerLevel level, long chunkPos, Function<EntityStorage, @Nullable IntSet> extractor) {
         if (!level.getServer().isSameThread()) throw new UnsupportedOperationException("EntityTracker is only available on the server thread!");
 
-        Long2ObjectMap<Int2ObjectMap<EntityStorage>> chunks = ENTITIES.get(level.dimension().location());
-        if (chunks == null || chunks.isEmpty()) return IntSets.emptySet();
-
-        Int2ObjectMap<EntityStorage> sections = chunks.get(chunkPos);
-        if (sections == null || sections.isEmpty()) return IntSets.emptySet();
-
         IntSet entities = new IntOpenHashSet();
-        for (EntityStorage entityStorage : sections.values()) {
+        for (EntityStorage entityStorage : EntityTracker.chunkSections(level, chunkPos).values()) {
             IntSet set = extractor.apply(entityStorage);
             if (set != null) entities.addAll(set);
         }
         if (entities.isEmpty()) return IntSets.emptySet();
         return entities;
+    }
+
+    public static void forEach(@NotNull ServerLevel level, long chunkPos,  Consumer<Entity> entityConsumer) {
+        forEachInternal(level, chunkPos, entityStorage -> entityStorage.entities, entityConsumer);
+    }
+
+    public static void forEach(@NotNull ServerLevel level, long chunkPos,  EntityType<?> type, Consumer<Entity> entityConsumer) {
+        forEachInternal(level, chunkPos, entityStorage -> {
+            ResourceLocation id = RegistryEntry.get(type);
+            if (id.equals(RegistryEntry.NONE)) return null;
+            if (entityStorage.entitiesByType == null) return null;
+            return entityStorage.entitiesByType.get(id);
+        }, entityConsumer);
+    }
+
+    public static void forEach(@NotNull ServerLevel level, long chunkPos, ResourceLocation filter, Consumer<Entity> entityConsumer) {
+        forEachInternal(level, chunkPos, entityStorage -> entityStorage.entitiesByFilter == null ? null : entityStorage.entitiesByFilter.get(filter), entityConsumer);
+    }
+
+    private static void forEachInternal(@NotNull ServerLevel level, long chunkPos, Function<EntityStorage, @Nullable IntSet> extractor, Consumer<Entity> entityConsumer) {
+        if (!level.getServer().isSameThread()) throw new UnsupportedOperationException("EntityTracker is only available on the server thread!");
+
+        for (EntityStorage entityStorage : EntityTracker.chunkSections(level, chunkPos).values()) {
+            IntSet set = extractor.apply(entityStorage);
+            if (set != null) {
+                IntIterator entities = set.intIterator();
+                while (entities.hasNext()) {
+                    Entity entity = level.getEntity(entities.nextInt());
+                    if (entity != null) {
+                        entityConsumer.accept(entity);
+                    }
+                }
+            }
+        }
     }
 
     public static @NotNull @UnmodifiableView IntSet getEntities(@NotNull ServerLevel level, long chunkPos, int sectionIndex) {
@@ -145,19 +171,110 @@ public final class EntityTracker {
     private static @NotNull @UnmodifiableView IntSet getInternal(@NotNull ServerLevel level, long chunkPos, int sectionIndex, Function<EntityStorage, @Nullable IntSet> extractor) {
         if (!level.getServer().isSameThread()) throw new UnsupportedOperationException("EntityTracker is only available on the server thread!");
 
-        Long2ObjectMap<Int2ObjectMap<EntityStorage>> chunks = ENTITIES.get(level.dimension().location());
-        if (chunks == null || chunks.isEmpty()) return IntSets.emptySet();
-
-        Int2ObjectMap<EntityStorage> sections = chunks.get(chunkPos);
-        if (sections == null || sections.isEmpty()) return IntSets.emptySet();
-
-        EntityStorage entityStorage = sections.get(sectionIndex);
+        EntityStorage entityStorage = EntityTracker.chunkSections(level, chunkPos).get(sectionIndex);
         if (entityStorage == null || entityStorage.isEmpty()) return IntSets.emptySet();
 
         IntSet set = extractor.apply(entityStorage);
         if (set == null || set.isEmpty()) return IntSets.emptySet();
 
         return IntSets.unmodifiable(set);
+    }
+
+    public static void forEach(@NotNull ServerLevel level, long chunkPos, int sectionIndex, Consumer<Entity> entityConsumer) {
+        forEachInternal(level, chunkPos, sectionIndex, entityStorage -> entityStorage.entities, entityConsumer);
+    }
+
+    public static void forEach(@NotNull ServerLevel level, long chunkPos, int sectionIndex, EntityType<?> type, Consumer<Entity> entityConsumer) {
+        forEachInternal(level, chunkPos, sectionIndex, entityStorage -> {
+            ResourceLocation id = RegistryEntry.get(type);
+            if (id.equals(RegistryEntry.NONE)) return null;
+            if (entityStorage.entitiesByType == null) return null;
+            return entityStorage.entitiesByType.get(id);
+        }, entityConsumer);
+    }
+
+    public static void forEach(@NotNull ServerLevel level, long chunkPos, int sectionIndex, ResourceLocation filter, Consumer<Entity> entityConsumer) {
+        forEachInternal(level, chunkPos, sectionIndex, entityStorage -> entityStorage.entitiesByFilter == null ? null : entityStorage.entitiesByFilter.get(filter), entityConsumer);
+    }
+
+    private static void forEachInternal(@NotNull ServerLevel level, long chunkPos, int sectionIndex, Function<EntityStorage, @Nullable IntSet> extractor, Consumer<Entity> entityConsumer) {
+        if (!level.getServer().isSameThread()) throw new UnsupportedOperationException("EntityTracker is only available on the server thread!");
+
+        EntityStorage entityStorage = EntityTracker.chunkSections(level, chunkPos).get(sectionIndex);
+        if (entityStorage == null || entityStorage.isEmpty()) return;
+
+        IntSet set = extractor.apply(entityStorage);
+        if (set == null || set.isEmpty()) return;
+
+        IntIterator entities = set.intIterator();
+        while (entities.hasNext()) {
+            Entity entity = level.getEntity(entities.nextInt());
+            if (entity == null) continue;
+            entityConsumer.accept(entity);
+        }
+    }
+
+    private static @NotNull Int2ObjectMap<EntityStorage> chunkSections(@NotNull ServerLevel level, long chunkPos) {
+        Long2ObjectMap<Int2ObjectMap<EntityStorage>> chunks = ENTITIES.get(level.dimension().location());
+        if (chunks == null || chunks.isEmpty()) return Int2ObjectMaps.emptyMap();
+        Int2ObjectMap<EntityStorage> sections = chunks.get(chunkPos);
+        if (sections == null || sections.isEmpty()) return Int2ObjectMaps.emptyMap();
+        return sections;
+    }
+
+    public static int count(@NotNull ServerLevel level, long chunkPos) {
+        return countInternal(level, chunkPos, storage -> storage.entities);
+    }
+
+    public static int count(@NotNull ServerLevel level, long chunkPos, EntityType<?> type) {
+        return countInternal(level, chunkPos, storage -> {
+            ResourceLocation id = RegistryEntry.get(type);
+            if (id.equals(RegistryEntry.NONE)) return null;
+            if (storage.entitiesByType == null) return null;
+            return storage.entitiesByType.get(id);
+        });
+    }
+
+    public static int count(@NotNull ServerLevel level, long chunkPos, ResourceLocation filter) {
+        return countInternal(level, chunkPos, storage -> storage.entitiesByFilter == null ? null : storage.entitiesByFilter.get(filter));
+    }
+
+    private static int countInternal(@NotNull ServerLevel level, long chunkPos, Function<EntityStorage, @Nullable IntSet> extractor) {
+        if (!level.getServer().isSameThread()) throw new UnsupportedOperationException("EntityTracker is only available on the server thread!");
+
+        int count = 0;
+        for (EntityStorage storage : EntityTracker.chunkSections(level, chunkPos).values()) {
+            IntSet set = extractor.apply(storage);
+            if (set != null) count += set.size();
+        }
+        return count;
+    }
+
+    public static int count(@NotNull ServerLevel level, long chunkPos, int sectionIndex) {
+        return countInternal(level, chunkPos, sectionIndex, storage -> storage.entities);
+    }
+
+    public static int count(@NotNull ServerLevel level, long chunkPos, int sectionIndex, EntityType<?> type) {
+        return countInternal(level, chunkPos, sectionIndex, storage -> {
+            ResourceLocation id = RegistryEntry.get(type);
+            if (id.equals(RegistryEntry.NONE)) return null;
+            if (storage.entitiesByType == null) return null;
+            return storage.entitiesByType.get(id);
+        });
+    }
+
+    public static int count(@NotNull ServerLevel level, long chunkPos, int sectionIndex, ResourceLocation filter) {
+        return countInternal(level, chunkPos, sectionIndex, storage -> storage.entitiesByFilter == null ? null : storage.entitiesByFilter.get(filter));
+    }
+
+    private static int countInternal(@NotNull ServerLevel level, long chunkPos, int sectionIndex, Function<EntityStorage, @Nullable IntSet> extractor) {
+        if (!level.getServer().isSameThread()) throw new UnsupportedOperationException("EntityTracker is only available on the server thread!");
+
+        EntityStorage storage = EntityTracker.chunkSections(level, chunkPos).get(sectionIndex);
+        if (storage == null || storage.isEmpty()) return 0;
+
+        IntSet set = extractor.apply(storage);
+        return set == null ? 0 : set.size();
     }
 
     private static void update(@NotNull Entity entity, @NotNull ServerLevel level, boolean add) {
@@ -167,8 +284,6 @@ public final class EntityTracker {
         final int id = entity.getId();
         final ResourceLocation entityType = RegistryEntry.get(entity.getType());
         boolean isNone = entityType.equals(RegistryEntry.NONE);
-        if (entity instanceof Filterable filterable && !filterable.filter$initialized()) filterable.filter$initialize(FILTERS);
-
         final ObjectList<ResourceLocation> filters = Filterable.getMatched(entity);
 
         UPDATE_TASKS.add(() -> {
@@ -325,13 +440,16 @@ public final class EntityTracker {
     }
 
     @ApiStatus.Internal
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     public interface Filterable {
         ObjectList<ResourceLocation> filter$matched();
         void filter$initialize(Object2ObjectMap<ResourceLocation, Predicate<Entity>> filters);
         boolean filter$initialized();
 
         static ObjectList<ResourceLocation> getMatched(Entity entity) {
-            return ((Filterable)entity).filter$matched();
+            Filterable filterable = (Filterable) entity;
+            if (!filterable.filter$initialized()) filterable.filter$initialize(FILTERS);
+            return filterable.filter$matched();
         }
     }
 }
