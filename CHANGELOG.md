@@ -1,2 +1,2 @@
-# 1.1.0
-- EntityTracker now supports LevelChunkSection index.
+# 1.1.1
+- Well, entitiesByClass is definitely a bad idea and was badly implemented, so we remove it.
