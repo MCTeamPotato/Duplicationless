@@ -43,8 +43,7 @@ public final class EntityTracker {
 
     public static final class EntityFilterRegistryEvent extends Event {
         public void register(ResourceLocation filterId, Predicate<Entity> filter) {
-            if (FILTERS.containsKey(filterId))
-                LOGGER.warn("[EntityTracker] Duplicate filter ID detected: {}. Overriding.", filterId);
+            if (FILTERS.containsKey(filterId)) LOGGER.warn("[EntityTracker] Duplicate filter ID detected: {}. Overriding.", filterId);
             FILTERS.put(filterId, filter);
         }
 
@@ -53,10 +52,12 @@ public final class EntityTracker {
         }
     }
 
+    @Deprecated(since = "Use getEntityList instead, the addAll call in this logic is somehow expensive")
     public static @NotNull IntSet getEntities(@NotNull ServerLevel level, long chunkPos) {
         return getInternal(level, chunkPos, entityStorage -> entityStorage.entities);
     }
 
+    @Deprecated(since = "Use getEntityList instead, the addAll call in this logic is somehow expensive")
     public static @NotNull IntSet getEntities(@NotNull ServerLevel level, long chunkPos, EntityType<?> type) {
         return getInternal(level, chunkPos, entityStorage -> {
             ResourceLocation id = RegistryEntry.get(type);
@@ -66,6 +67,7 @@ public final class EntityTracker {
         });
     }
 
+    @Deprecated(since = "Use getEntityList instead, the addAll call in this logic is somehow expensive")
     public static @NotNull IntSet getEntities(@NotNull ServerLevel level, long chunkPos, ResourceLocation filter) {
         return getInternal(level, chunkPos, entityStorage -> entityStorage.entitiesByFilter == null ? null : entityStorage.entitiesByFilter.get(filter));
     }
