@@ -21,17 +21,19 @@ public abstract class EntityMixin {
     @WrapMethod(method = "setPosRaw")
     private void onChunkUpdate(double x, double y, double z, @NotNull Operation<Void> original) {
         final Entity entity = (Entity) (Object) this;
-        final long previousChunk = Positions.toChunk(this.blockPosition());
-        final long nextChunk = Positions.toChunk(x, z);
-        final boolean differentChunk = previousChunk != nextChunk;
+        try {
+            final long previousChunk = Positions.toChunk(this.blockPosition());
+            final long nextChunk = Positions.toChunk(x, z);
+            final boolean differentChunk = previousChunk != nextChunk;
 
-        boolean isSectionChange = SectionPos.blockToSectionCoord(Mth.floor(this.getY())) != SectionPos.blockToSectionCoord(Mth.floor(y));
+            boolean isSectionChange = SectionPos.blockToSectionCoord(Mth.floor(this.getY())) != SectionPos.blockToSectionCoord(Mth.floor(y));
 
-        if (isSectionChange) MinecraftForge.EVENT_BUS.post(new EntityChunkChangeEvent.Section.Before(entity));
-        if (differentChunk) MinecraftForge.EVENT_BUS.post(new EntityChunkChangeEvent.Before(entity));
-        original.call(x, y, z);
+            if (isSectionChange) MinecraftForge.EVENT_BUS.post(new EntityChunkChangeEvent.Section.Before(entity));
+            if (differentChunk) MinecraftForge.EVENT_BUS.post(new EntityChunkChangeEvent.Before(entity));
+            original.call(x, y, z);
 
-        if (isSectionChange) MinecraftForge.EVENT_BUS.post(new EntityChunkChangeEvent.Section.After(entity));
-        if (differentChunk) MinecraftForge.EVENT_BUS.post(new EntityChunkChangeEvent.After(entity));
+            if (isSectionChange) MinecraftForge.EVENT_BUS.post(new EntityChunkChangeEvent.Section.After(entity));
+            if (differentChunk) MinecraftForge.EVENT_BUS.post(new EntityChunkChangeEvent.After(entity));
+        } catch (Throwable ignored) {}
     }
 }
