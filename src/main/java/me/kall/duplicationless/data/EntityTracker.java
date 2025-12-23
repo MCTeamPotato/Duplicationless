@@ -67,10 +67,6 @@ public final class EntityTracker {
         });
     }
 
-    public static @NotNull @UnmodifiableView IntSet getEntities(@NotNull ServerLevel level, long chunkPos, Class<?> entityClass) {
-        return getInternal(level, chunkPos, entityStorage -> entityStorage.entitiesByClass == null ? null : entityStorage.entitiesByClass.get(entityClass));
-    }
-
     public static @NotNull @UnmodifiableView IntSet getEntities(@NotNull ServerLevel level, long chunkPos, ResourceLocation filter) {
         return getInternal(level, chunkPos, entityStorage -> entityStorage.entitiesByFilter == null ? null : entityStorage.entitiesByFilter.get(filter));
     }
@@ -104,10 +100,6 @@ public final class EntityTracker {
             if (entityStorage.entitiesByType == null) return null;
             return entityStorage.entitiesByType.get(id);
         });
-    }
-
-    public static @NotNull @UnmodifiableView IntSet getEntities(@NotNull ServerLevel level, long chunkPos, int sectionIndex, Class<?> entityClass) {
-        return getInternal(level, chunkPos, sectionIndex, entityStorage -> entityStorage.entitiesByClass == null ? null : entityStorage.entitiesByClass.get(entityClass));
     }
 
     public static @NotNull @UnmodifiableView IntSet getEntities(@NotNull ServerLevel level, long chunkPos, int sectionIndex, ResourceLocation filter) {
@@ -149,9 +141,9 @@ public final class EntityTracker {
             EntityStorage entityStorage = sections.computeIfAbsent(sectionIndex, key -> new EntityStorage());
 
             if (add) {
-                entityStorage.add(id, entityType, entity.getClass(), isNone, filters);
+                entityStorage.add(id, entityType, isNone, filters);
             } else {
-                entityStorage.remove(id, entityType, entity.getClass(), isNone, filters);
+                entityStorage.remove(id, entityType, isNone, filters);
                 if (entityStorage.isEmpty()) {
                     sections.remove(sectionIndex);
                     if (sections.isEmpty()) {
@@ -236,22 +228,18 @@ public final class EntityTracker {
         @Nullable IntSet entities;
         @Nullable Object2ObjectMap<ResourceLocation, IntSet> entitiesByType;
         @Nullable Object2ObjectMap<ResourceLocation, IntSet> entitiesByFilter;
-        @Nullable Object2ObjectMap<Class<?>, IntSet> entitiesByClass;
 
         boolean isEmpty() {
-            return entities == null && entitiesByType == null && entitiesByFilter == null && entitiesByClass == null;
+            return entities == null && entitiesByType == null && entitiesByFilter == null;
         }
 
-        void add(int entityId, ResourceLocation type, Class<?> entityClass, boolean isNone, @Nullable ObjectList<ResourceLocation> matched) {
+        void add(int entityId, ResourceLocation type, boolean isNone, @Nullable ObjectList<ResourceLocation> matched) {
             updateEntities(entityId, true);
 
             if (!isNone) {
                 if (entitiesByType == null) entitiesByType = new Object2ObjectOpenHashMap<>();
                 update(entitiesByType, type, entityId, true);
             }
-
-            if (entitiesByClass == null) entitiesByClass = new Object2ObjectOpenHashMap<>();
-            update(entitiesByClass, entityClass, entityId, true);
 
             if (matched != null && !matched.isEmpty()) {
                 if (entitiesByFilter == null) entitiesByFilter = new Object2ObjectOpenHashMap<>();
@@ -261,17 +249,12 @@ public final class EntityTracker {
             }
         }
 
-        void remove(int entityId, ResourceLocation type, Class<?> entityClass, boolean isNone, @Nullable ObjectList<ResourceLocation> matched) {
+        void remove(int entityId, ResourceLocation type, boolean isNone, @Nullable ObjectList<ResourceLocation> matched) {
             updateEntities(entityId, false);
 
             if (!isNone && entitiesByType != null) {
                 update(entitiesByType, type, entityId, false);
                 if (entitiesByType.isEmpty()) entitiesByType = null;
-            }
-
-            if (entitiesByClass != null) {
-                update(entitiesByClass, entityClass, entityId, false);
-                if (entitiesByClass.isEmpty()) entitiesByClass = null;
             }
 
             if (matched != null && !matched.isEmpty() && entitiesByFilter != null) {
