@@ -3,6 +3,7 @@ package me.kall.duplicationless.mixin.data;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.ObjectLists;
 import me.kall.duplicationless.data.EntityTracker;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
@@ -24,7 +25,10 @@ public class EntityMixin implements EntityTracker.Filterable {
 
     @Override
     public void filter$initialize(@NotNull Object2ObjectMap<ResourceLocation, Predicate<Entity>> filters) {
-        if (filters.isEmpty()) return;
+        if (filters.isEmpty()) {
+            this.filter$matched = ObjectLists.emptyList();
+            return;
+        }
         Entity entity = (Entity) (Object) this;
         for (Map.Entry<ResourceLocation, Predicate<Entity>> entry : filters.entrySet()) {
             if (entry.getValue().test(entity)) {
