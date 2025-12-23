@@ -3,9 +3,7 @@ package me.kall.duplicationless.data;
 import it.unimi.dsi.fastutil.ints.*;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.*;
 import me.kall.duplicationless.Duplicationless;
 import me.kall.duplicationless.event.EntityChunkChangeEvent;
 import me.kall.duplicationless.ext.RegistryEntry;
@@ -55,11 +53,11 @@ public final class EntityTracker {
         }
     }
 
-    public static @NotNull @UnmodifiableView IntSet getEntities(@NotNull ServerLevel level, long chunkPos) {
+    public static @NotNull IntSet getEntities(@NotNull ServerLevel level, long chunkPos) {
         return getInternal(level, chunkPos, entityStorage -> entityStorage.entities);
     }
 
-    public static @NotNull @UnmodifiableView IntSet getEntities(@NotNull ServerLevel level, long chunkPos, EntityType<?> type) {
+    public static @NotNull IntSet getEntities(@NotNull ServerLevel level, long chunkPos, EntityType<?> type) {
         return getInternal(level, chunkPos, entityStorage -> {
             ResourceLocation id = RegistryEntry.get(type);
             if (id.equals(RegistryEntry.NONE)) return null;
@@ -68,11 +66,46 @@ public final class EntityTracker {
         });
     }
 
-    public static @NotNull @UnmodifiableView IntSet getEntities(@NotNull ServerLevel level, long chunkPos, ResourceLocation filter) {
+    public static @NotNull IntSet getEntities(@NotNull ServerLevel level, long chunkPos, ResourceLocation filter) {
         return getInternal(level, chunkPos, entityStorage -> entityStorage.entitiesByFilter == null ? null : entityStorage.entitiesByFilter.get(filter));
     }
 
-    private static @NotNull @UnmodifiableView IntSet getInternal(@NotNull ServerLevel level, long chunkPos, Function<EntityStorage, @Nullable IntSet> extractor) {
+    public static ObjectList<IntSet> getEntityList(@NotNull ServerLevel level, long chunkPos) {
+        return getInternalList(level, chunkPos, entityStorage -> entityStorage.entities);
+    }
+
+    public static ObjectList<IntSet> getEntityList(@NotNull ServerLevel level, long chunkPos, EntityType<?> type) {
+        return getInternalList(level, chunkPos, entityStorage -> {
+            ResourceLocation id = RegistryEntry.get(type);
+            if (id.equals(RegistryEntry.NONE)) return null;
+            if (entityStorage.entitiesByType == null) return null;
+            return entityStorage.entitiesByType.get(id);
+        });
+    }
+
+    public static ObjectList<IntSet> getEntityList(@NotNull ServerLevel level, long chunkPos, ResourceLocation filter) {
+        return getInternalList(level, chunkPos, entityStorage -> entityStorage.entitiesByFilter == null ? null : entityStorage.entitiesByFilter.get(filter));
+    }
+
+    private static ObjectList<IntSet> getInternalList(@NotNull ServerLevel level, long chunkPos, Function<EntityStorage, @Nullable IntSet> extractor) {
+        if (!level.getServer().isSameThread()) throw new UnsupportedOperationException("EntityTracker is only available on the server thread!");
+
+        Long2ObjectMap<Int2ObjectMap<EntityStorage>> chunks = ENTITIES.get(level.dimension().location());
+        if (chunks == null || chunks.isEmpty()) return ObjectLists.emptyList();
+
+        Int2ObjectMap<EntityStorage> sections = chunks.get(chunkPos);
+        if (sections == null || sections.isEmpty()) return ObjectLists.emptyList();
+
+        ObjectList<IntSet> entities = new ObjectArrayList<>(sections.size());
+        for (EntityStorage entityStorage : sections.values()) {
+            IntSet set = extractor.apply(entityStorage);
+            if (set != null) entities.add(IntSets.unmodifiable(set));
+        }
+        if (entities.isEmpty()) return ObjectLists.emptyList();
+        return entities;
+    }
+
+    private static @NotNull IntSet getInternal(@NotNull ServerLevel level, long chunkPos, Function<EntityStorage, @Nullable IntSet> extractor) {
         if (!level.getServer().isSameThread()) throw new UnsupportedOperationException("EntityTracker is only available on the server thread!");
 
         Long2ObjectMap<Int2ObjectMap<EntityStorage>> chunks = ENTITIES.get(level.dimension().location());
@@ -87,7 +120,7 @@ public final class EntityTracker {
             if (set != null) entities.addAll(set);
         }
         if (entities.isEmpty()) return IntSets.emptySet();
-        return IntSets.unmodifiable(entities);
+        return entities;
     }
 
     public static @NotNull @UnmodifiableView IntSet getEntities(@NotNull ServerLevel level, long chunkPos, int sectionIndex) {

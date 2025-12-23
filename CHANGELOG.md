@@ -1,2 +1,2 @@
-# 1.1.1
-- Well, entitiesByClass is definitely a bad idea and was badly implemented, so we remove it.
+# 1.1.2
+- New per-section entity list APIs were added, enabling more efficient entity queries by avoiding eager set merging.
