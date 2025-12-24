@@ -12,6 +12,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.core.SectionPos;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.monster.Enemy;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
@@ -40,6 +42,9 @@ public final class EntityTracker {
     private static final Object2ObjectMap<ResourceLocation, Long2ObjectMap<Int2ObjectMap<EntityStorage>>> ENTITIES = new Object2ObjectOpenHashMap<>();
     private static final Object2ObjectMap<ResourceLocation, Predicate<Entity>> FILTERS = new Object2ObjectOpenHashMap<>();
     private static final ConcurrentLinkedQueue<Runnable> UPDATE_TASKS = new ConcurrentLinkedQueue<>();
+
+    public static final ResourceLocation LIVING = ResourceLocation.fromNamespaceAndPath(Duplicationless.MOD_ID, "living_entity");
+    public static final ResourceLocation ENEMY = ResourceLocation.fromNamespaceAndPath(Duplicationless.MOD_ID, "enemy");
 
     public static final class EntityFilterRegistryEvent extends Event {
         public void register(ResourceLocation filterId, Predicate<Entity> filter) {
@@ -309,6 +314,12 @@ public final class EntityTracker {
     public static void filterRegistry(@NotNull ServerAboutToStartEvent event) {
         MinecraftForge.EVENT_BUS.post(new EntityFilterRegistryEvent());
         LOGGER.info("Duplicationless Entity Tracker has initialized successfully.");
+    }
+
+    @SubscribeEvent
+    public static void listenLiving(@NotNull EntityFilterRegistryEvent event) {
+        event.register(LIVING, LivingEntity.class);
+        event.register(ENEMY, Enemy.class);
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
