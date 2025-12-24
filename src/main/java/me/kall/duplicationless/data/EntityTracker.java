@@ -58,12 +58,12 @@ public final class EntityTracker {
         }
     }
 
-    @Deprecated(since = "Use getEntityList instead, the addAll call in this logic is expensive")
+    @Deprecated
     public static @NotNull IntSet getEntities(@NotNull ServerLevel level, long chunkPos) {
         return getInternal(level, chunkPos, entityStorage -> entityStorage.entities);
     }
 
-    @Deprecated(since = "Use getEntityList instead, the addAll call in this logic is expensive")
+    @Deprecated
     public static @NotNull IntSet getEntities(@NotNull ServerLevel level, long chunkPos, EntityType<?> type) {
         return getInternal(level, chunkPos, entityStorage -> {
             ResourceLocation id = RegistryEntry.get(type);
@@ -73,7 +73,7 @@ public final class EntityTracker {
         });
     }
 
-    @Deprecated(since = "Use getEntityList instead, the addAll call in this logic is expensive")
+    @Deprecated
     public static @NotNull IntSet getEntities(@NotNull ServerLevel level, long chunkPos, ResourceLocation filter) {
         return getInternal(level, chunkPos, entityStorage -> entityStorage.entitiesByFilter == null ? null : entityStorage.entitiesByFilter.get(filter));
     }
