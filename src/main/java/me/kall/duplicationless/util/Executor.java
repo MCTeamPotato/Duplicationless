@@ -27,8 +27,7 @@ public class Executor {
             logInvalid();
             return;
         }
-        int tickCount = server.getTickCount();
-        server.execute(() -> TASKS.computeIfAbsent(tickCount + ticks, key -> new ObjectArrayList<>()).add(task));
+        server.execute(() -> TASKS.computeIfAbsent(server.getTickCount() + ticks, key -> new ObjectArrayList<>()).add(task));
     }
 
     public static void run(Runnable task) {
@@ -37,11 +36,7 @@ public class Executor {
             logInvalid();
             return;
         }
-        if (server.isSameThread()) {
-            task.run();
-        } else {
-            server.execute(task);
-        }
+        server.execute(task);
     }
 
     private static void logInvalid() {
@@ -54,12 +49,10 @@ public class Executor {
         if (event.phase == TickEvent.Phase.START) {
             MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
             int tick = server.getTickCount();
-            server.execute(() -> {
-                List<Runnable> tasks = TASKS.get(tick);
-                if (tasks == null) return;
-                tasks.forEach(Runnable::run);
-                TASKS.remove(tick);
-            });
+            List<Runnable> tasks = TASKS.get(tick);
+            if (tasks == null) return;
+            tasks.forEach(Runnable::run);
+            TASKS.remove(tick);
         }
     }
 }
