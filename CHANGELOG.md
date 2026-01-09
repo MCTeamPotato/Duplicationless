@@ -1,2 +1,2 @@
-# 1.1.3
-- Resolve FakePlayer compatibility issue
+# 1.1.4
+- Add more helper methods to EntityTracker.
