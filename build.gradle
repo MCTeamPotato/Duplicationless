@@ -2,7 +2,7 @@ import net.darkhax.curseforgegradle.TaskPublishCurseForge
 import net.darkhax.curseforgegradle.UploadArtifact
 
 plugins {
-    id 'dev.architectury.loom' version '1.10-SNAPSHOT'
+    id 'dev.architectury.loom' version '1.13-SNAPSHOT'
     id "com.github.johnrengelman.shadow" version "8.1.1"
     id 'net.darkhax.curseforgegradle' version '1.1.+'
 }
