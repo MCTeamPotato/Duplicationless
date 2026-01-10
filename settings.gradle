@@ -1,6 +1,5 @@
 pluginManagement {
     repositories {
-        gradlePluginPortal()
         maven { url "https://maven.fabricmc.net/" }
         maven { url "https://maven.architectury.dev/" }
         maven { url "https://files.minecraftforge.net/maven/" }
@@ -8,6 +7,8 @@ pluginManagement {
             name = 'ParchmentMC'
             url = 'https://maven.parchmentmc.org'
         }
+        mavenCentral()
+        gradlePluginPortal()
     }
 }
 
