@@ -20,6 +20,7 @@ public class JsonConfig {
     private final Path configPath;
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     private final Map<String, JsonElement> configMap = new Object2ObjectLinkedOpenHashMap<>();
+    private static final JsonParser PARSER = new JsonParser();
 
     public static final Path CONFIG_DIR = FMLLoader.getGamePath().resolve("config");
 
@@ -49,7 +50,7 @@ public class JsonConfig {
 
     private void read() {
         try (BufferedReader reader = new BufferedReader(new FileReader(configPath.toFile()))) {
-            JsonObject fileConfig = JsonParser.parseReader(reader).getAsJsonObject();
+            JsonObject fileConfig = PARSER.parse(reader).getAsJsonObject();
 
             Map<String, JsonElement> defaultConfig = new Object2ObjectLinkedOpenHashMap<>(this.configMap);
 

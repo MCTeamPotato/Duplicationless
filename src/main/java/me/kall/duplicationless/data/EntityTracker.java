@@ -7,23 +7,25 @@ import it.unimi.dsi.fastutil.objects.*;
 import me.kall.duplicationless.Duplicationless;
 import me.kall.duplicationless.event.EntityChunkChangeEvent;
 import me.kall.duplicationless.ext.RegistryEntry;
+import me.kall.duplicationless.util.Positions;
+import net.minecraft.core.SectionPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.core.SectionPos;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.EntityJoinLevelEvent;
-import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
-import net.minecraftforge.event.server.ServerAboutToStartEvent;
-import net.minecraftforge.event.server.ServerStoppedEvent;
+import net.minecraftforge.event.entity.EntityJoinWorldEvent;
+import net.minecraftforge.event.entity.EntityLeaveWorldEvent;
 import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.event.server.FMLServerAboutToStartEvent;
+import net.minecraftforge.fml.event.server.FMLServerStoppedEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.ApiStatus;
@@ -43,8 +45,8 @@ public final class EntityTracker {
     private static final Object2ObjectMap<ResourceLocation, Predicate<Entity>> FILTERS = new Object2ObjectOpenHashMap<>();
     private static final ConcurrentLinkedQueue<Runnable> UPDATE_TASKS = new ConcurrentLinkedQueue<>();
 
-    public static final ResourceLocation LIVING = ResourceLocation.fromNamespaceAndPath(Duplicationless.MOD_ID, "living_entity");
-    public static final ResourceLocation ENEMY = ResourceLocation.fromNamespaceAndPath(Duplicationless.MOD_ID, "enemy");
+    public static final ResourceLocation LIVING = new ResourceLocation(Duplicationless.MOD_ID, "living_entity");
+    public static final ResourceLocation ENEMY = new ResourceLocation(Duplicationless.MOD_ID, "enemy");
 
     public static final class EntityFilterRegistryEvent extends Event {
         public void register(ResourceLocation filterId, Predicate<Entity> filter) {
@@ -108,7 +110,7 @@ public final class EntityTracker {
         return entities;
     }
 
-    @Deprecated(since = "Use getEntityListInternal instead, the addAll call in this logic is expensive")
+    @Deprecated
     private static @NotNull IntSet getInternal(@NotNull ServerLevel level, long chunkPos, Function<EntityStorage, @Nullable IntSet> extractor) {
         if (!level.getServer().isSameThread()) throw new UnsupportedOperationException("EntityTracker is only available on the server thread!");
 
@@ -117,7 +119,7 @@ public final class EntityTracker {
             IntSet set = extractor.apply(entityStorage);
             if (set != null) entities.addAll(set);
         }
-        if (entities.isEmpty()) return IntSets.emptySet();
+        if (entities.isEmpty()) return IntSets.EMPTY_SET;
         return entities;
     }
 
@@ -144,7 +146,7 @@ public final class EntityTracker {
         for (EntityStorage entityStorage : EntityTracker.chunkSections(level, chunkPos).values()) {
             IntSet set = extractor.apply(entityStorage);
             if (set != null) {
-                IntIterator entities = set.intIterator();
+                IntIterator entities = set.iterator();
                 while (entities.hasNext()) {
                     Entity entity = level.getEntity(entities.nextInt());
                     if (entity != null) {
@@ -176,10 +178,10 @@ public final class EntityTracker {
         if (!level.getServer().isSameThread()) throw new UnsupportedOperationException("EntityTracker is only available on the server thread!");
 
         EntityStorage entityStorage = EntityTracker.chunkSections(level, chunkPos).get(sectionIndex);
-        if (entityStorage == null || entityStorage.isEmpty()) return IntSets.emptySet();
+        if (entityStorage == null || entityStorage.isEmpty()) return IntSets.EMPTY_SET;
 
         IntSet set = extractor.apply(entityStorage);
-        if (set == null || set.isEmpty()) return IntSets.emptySet();
+        if (set == null || set.isEmpty()) return IntSets.EMPTY_SET;
 
         return IntSets.unmodifiable(set);
     }
@@ -210,7 +212,7 @@ public final class EntityTracker {
         IntSet set = extractor.apply(entityStorage);
         if (set == null || set.isEmpty()) return;
 
-        IntIterator entities = set.intIterator();
+        IntIterator entities = set.iterator();
         while (entities.hasNext()) {
             Entity entity = level.getEntity(entities.nextInt());
             if (entity == null) continue;
@@ -282,8 +284,8 @@ public final class EntityTracker {
     }
 
     private static void update(@NotNull Entity entity, @NotNull ServerLevel level, boolean add) {
-        final long chunkPos = entity.chunkPosition().toLong();
-        final int sectionIndex = SectionPos.blockToSectionCoord(entity.getY());
+        final long chunkPos = Positions.toChunk(entity.blockPosition());
+        final int sectionIndex = SectionPos.blockToSectionCoord(Mth.floor(entity.getY()));
         final ResourceLocation dim = level.dimension().location();
         final int id = entity.getId();
         final ResourceLocation entityType = RegistryEntry.get(entity.getType());
@@ -311,7 +313,7 @@ public final class EntityTracker {
     }
 
     @SubscribeEvent
-    public static void filterRegistry(@NotNull ServerAboutToStartEvent event) {
+    public static void filterRegistry(@NotNull FMLServerAboutToStartEvent event) {
         MinecraftForge.EVENT_BUS.post(new EntityFilterRegistryEvent());
         LOGGER.info("Duplicationless Entity Tracker has initialized successfully.");
     }
@@ -323,50 +325,50 @@ public final class EntityTracker {
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void onJoin(@NotNull EntityJoinLevelEvent event) {
+    public static void onJoin(@NotNull EntityJoinWorldEvent event) {
         Entity entity = event.getEntity();
-        if (event.getLevel() instanceof ServerLevel level) {
-            update(entity, level, true);
+        if (event.getWorld() instanceof ServerLevel) {
+            update(entity, (ServerLevel) event.getWorld(), true);
         }
     }
 
     @SubscribeEvent
-    public static void onLeave(@NotNull EntityLeaveLevelEvent event) {
+    public static void onLeave(@NotNull EntityLeaveWorldEvent event) {
         Entity entity = event.getEntity();
-        if (event.getLevel() instanceof ServerLevel level) {
-            update(entity, level, false);
+        if (event.getWorld() instanceof ServerLevel) {
+            update(entity, (ServerLevel) event.getWorld(), false);
         }
     }
 
     @SubscribeEvent
     public static void beforeChunkChange(EntityChunkChangeEvent.@NotNull Before event) {
         Entity entity = event.getEntity();
-        if (entity.level() instanceof ServerLevel level) {
-            update(entity, level, false);
+        if (entity.level instanceof ServerLevel) {
+            update(entity, (ServerLevel) entity.level, false);
         }
     }
 
     @SubscribeEvent
     public static void afterChunkChange(EntityChunkChangeEvent.@NotNull After event) {
         Entity entity = event.getEntity();
-        if (entity.level() instanceof ServerLevel level) {
-            update(entity, level, true);
+        if (entity.level instanceof ServerLevel) {
+            update(entity, (ServerLevel) entity.level, true);
         }
     }
 
     @SubscribeEvent
     public static void beforeSectionChange(EntityChunkChangeEvent.Section.@NotNull Before event) {
         Entity entity = event.getEntity();
-        if (entity.level() instanceof ServerLevel level) {
-            update(entity, level, false);
+        if (entity.level instanceof ServerLevel) {
+            update(entity, (ServerLevel) entity.level, false);
         }
     }
 
     @SubscribeEvent
     public static void afterSectionChange(EntityChunkChangeEvent.Section.@NotNull After event) {
         Entity entity = event.getEntity();
-        if (entity.level() instanceof ServerLevel level) {
-            update(entity, level, true);
+        if (entity.level instanceof ServerLevel) {
+            update(entity, (ServerLevel) entity.level, true);
         }
     }
 
@@ -379,7 +381,7 @@ public final class EntityTracker {
     }
 
     @SubscribeEvent
-    public static void stopServer(ServerStoppedEvent event) {
+    public static void stopServer(FMLServerStoppedEvent event) {
         UPDATE_TASKS.clear();
         ENTITIES.clear();
         FILTERS.clear();

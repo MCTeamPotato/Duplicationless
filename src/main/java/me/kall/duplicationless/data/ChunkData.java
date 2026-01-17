@@ -14,6 +14,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.saveddata.SavedData;
+import net.minecraftforge.common.util.Constants;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -24,6 +25,10 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 public abstract class ChunkData<DATA, TYPE> extends SavedData {
+    public ChunkData(String string) {
+        super(string);
+    }
+
     public abstract @NotNull Object2ObjectMap<ResourceLocation, Long2ObjectMap<Set<DATA>>> data();
 
     public abstract boolean dataTrustable();
@@ -165,7 +170,7 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
 
         Function<DATA, Tag> saveFunction = this.dataToTag();
 
-        for (var dimEntry : this.data().object2ObjectEntrySet()) {
+        for (Object2ObjectMap.Entry<ResourceLocation, Long2ObjectMap<Set<DATA>>> dimEntry : this.data().object2ObjectEntrySet()) {
             CompoundTag dimTag = new CompoundTag();
             dimTag.putString("id", dimEntry.getKey().toString());
 
@@ -191,19 +196,19 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
         return tag;
     }
 
-    public @NotNull ChunkData<DATA, TYPE> load(@NotNull CompoundTag tag) {
+    public void load(@NotNull CompoundTag tag) {
         this.data().clear();
 
         Function<Tag, DATA> loadFunction = this.tagToData();
 
-        ListTag dimList = tag.getList("dimensions", Tag.TAG_COMPOUND);
+        ListTag dimList = tag.getList("dimensions", Constants.NBT.TAG_COMPOUND);
         for (int d = 0; d < dimList.size(); d++) {
             CompoundTag dimTag = dimList.getCompound(d);
-            ResourceLocation dim = ResourceLocation.parse(dimTag.getString("id"));
+            ResourceLocation dim = new ResourceLocation(dimTag.getString("id"));
 
             Long2ObjectMap<Set<DATA>> map = this.getLevelData(dim);
 
-            ListTag chunkList = dimTag.getList("chunks", Tag.TAG_COMPOUND);
+            ListTag chunkList = dimTag.getList("chunks", Constants.NBT.TAG_COMPOUND);
             for (int i = 0; i < chunkList.size(); i++) {
                 CompoundTag chunkTag = chunkList.getCompound(i);
                 long chunk = chunkTag.getLong("chunk");
@@ -217,14 +222,17 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
         }
 
         this.setDirty();
-        return this;
     }
 
     public static <DATA, TYPE> @NotNull ChunkData<DATA, TYPE> get(@NotNull ServerLevel level, Supplier<ChunkData<DATA, TYPE>> constructor, String name) {
-        return level.getDataStorage().computeIfAbsent(tag -> constructor.get().load(tag), constructor, name);
+        return level.getDataStorage().computeIfAbsent(constructor, name);
     }
 
     public static abstract class UUIDData extends ChunkData<UUID, Entity> {
+        public UUIDData(String string) {
+            super(string);
+        }
+
         @Override public abstract @NotNull Object2ObjectMap<ResourceLocation, Long2ObjectMap<Set<UUID>>> data();
         @Override public abstract @Nullable Predicate<Entity> validation();
 
@@ -241,11 +249,15 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
         }
 
         @Override public int dataTagType() {
-            return Tag.TAG_STRING;
+            return Constants.NBT.TAG_STRING;
         }
     }
 
     public static abstract class IdData extends ChunkData<Integer, Entity> {
+        public IdData(String string) {
+            super(string);
+        }
+
         @Override public abstract @NotNull Object2ObjectMap<ResourceLocation, Long2ObjectMap<Set<Integer>>> data();
         @Override public abstract @Nullable Predicate<Entity> validation();
 
@@ -262,11 +274,15 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
         }
 
         @Override public int dataTagType() {
-            return Tag.TAG_INT;
+            return Constants.NBT.TAG_INT;
         }
     }
 
     public static abstract class BlockData extends ChunkData<Long, BlockState> {
+        public BlockData(String string) {
+            super(string);
+        }
+
         @Override public abstract @NotNull Object2ObjectMap<ResourceLocation, Long2ObjectMap<Set<Long>>> data();
         @Override public abstract @Nullable Predicate<BlockState> validation();
 
@@ -285,7 +301,7 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
         }
 
         @Override public int dataTagType() {
-            return Tag.TAG_LONG;
+            return Constants.NBT.TAG_LONG;
         }
     }
 }

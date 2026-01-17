@@ -13,7 +13,7 @@ import org.jetbrains.annotations.NotNull;
 public interface RegistryEntry {
     ResourceLocation registry$getName();
 
-    ResourceLocation NONE = ResourceLocation.fromNamespaceAndPath(Duplicationless.MOD_ID, "none");
+    ResourceLocation NONE = new ResourceLocation(Duplicationless.MOD_ID, "none");
 
     static ResourceLocation get(@NotNull Entity entity) {
         return get(entity.getType());

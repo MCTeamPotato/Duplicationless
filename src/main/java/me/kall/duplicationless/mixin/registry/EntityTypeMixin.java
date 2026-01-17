@@ -14,7 +14,7 @@ public abstract class EntityTypeMixin implements RegistryEntry {
     @Override
     public ResourceLocation registry$getName() {
         if (this.registry$name == null) {
-            ResourceLocation id = ForgeRegistries.ENTITY_TYPES.getKey((EntityType<?>) (Object) this);
+            ResourceLocation id = ForgeRegistries.ENTITIES.getKey((EntityType<?>) (Object) this);
             this.registry$name = id == null ? RegistryEntry.NONE : id;
         }
         return this.registry$name;
