@@ -1,14 +1,10 @@
 pluginManagement {
     repositories {
-        maven { url "https://maven.fabricmc.net/" }
-        maven { url "https://maven.architectury.dev/" }
-        maven { url "https://files.minecraftforge.net/maven/" }
-        maven {
-            name = 'ParchmentMC'
-            url = 'https://maven.parchmentmc.org'
-        }
-        mavenCentral()
         gradlePluginPortal()
+        maven { name = "MinecraftForge"; url = "https://files.minecraftforge.net/maven/" }
+        maven { name = "NeoForged";      url = 'https://maven.neoforged.net/releases' }
+        maven { name = "FabricMC";       url = "https://maven.fabricmc.net/" }
+        maven { name = "Architectury";   url = "https://maven.architectury.dev/" }
     }
 }
 
