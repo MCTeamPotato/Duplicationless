@@ -1,5 +1,6 @@
 package me.kall.duplicationless.mixin;
 
+import com.google.common.collect.Lists;
 import com.llamalad7.mixinextras.MixinExtrasBootstrap;
 import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
@@ -31,7 +32,7 @@ public class MixinExtrasInitializer implements IMixinConfigPlugin {
 
     @Override
     public List<String> getMixins() {
-        return List.of();
+        return Lists.newArrayList();
     }
 
     @Override
