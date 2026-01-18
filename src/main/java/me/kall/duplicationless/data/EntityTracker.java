@@ -8,7 +8,7 @@ import me.kall.duplicationless.Duplicationless;
 import me.kall.duplicationless.event.EntityChunkChangeEvent;
 import me.kall.duplicationless.ext.RegistryEntry;
 import net.minecraft.core.SectionPos;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -39,20 +39,20 @@ import java.util.function.Predicate;
 @EventBusSubscriber(modid = Duplicationless.MOD_ID)
 public final class EntityTracker {
     private static final Logger LOGGER = LogManager.getLogger(EntityTracker.class);
-    private static final Object2ObjectMap<ResourceLocation, Long2ObjectMap<Int2ObjectMap<EntityStorage>>> ENTITIES = new Object2ObjectOpenHashMap<>();
-    private static final Object2ObjectMap<ResourceLocation, Predicate<Entity>> FILTERS = new Object2ObjectOpenHashMap<>();
+    private static final Object2ObjectMap<Identifier, Long2ObjectMap<Int2ObjectMap<EntityStorage>>> ENTITIES = new Object2ObjectOpenHashMap<>();
+    private static final Object2ObjectMap<Identifier, Predicate<Entity>> FILTERS = new Object2ObjectOpenHashMap<>();
     private static final ConcurrentLinkedQueue<Runnable> UPDATE_TASKS = new ConcurrentLinkedQueue<>();
 
-    public static final ResourceLocation LIVING = ResourceLocation.fromNamespaceAndPath(Duplicationless.MOD_ID, "living_entity");
-    public static final ResourceLocation ENEMY = ResourceLocation.fromNamespaceAndPath(Duplicationless.MOD_ID, "enemy");
+    public static final Identifier LIVING = Identifier.fromNamespaceAndPath(Duplicationless.MOD_ID, "living_entity");
+    public static final Identifier ENEMY = Identifier.fromNamespaceAndPath(Duplicationless.MOD_ID, "enemy");
 
     public static final class EntityFilterRegistryEvent extends Event {
-        public void register(ResourceLocation filterId, Predicate<Entity> filter) {
+        public void register(Identifier filterId, Predicate<Entity> filter) {
             if (FILTERS.containsKey(filterId)) LOGGER.warn("[EntityTracker] Duplicate filter ID detected: {}. Overriding.", filterId);
             FILTERS.put(filterId, filter);
         }
 
-        public void register(ResourceLocation filterId, @NotNull Class<?> entityClass) {
+        public void register(Identifier filterId, @NotNull Class<?> entityClass) {
             register(filterId, entityClass::isInstance);
         }
     }
@@ -65,7 +65,7 @@ public final class EntityTracker {
     @Deprecated
     public static @NotNull IntSet getEntities(@NotNull ServerLevel level, long chunkPos, EntityType<?> type) {
         return getInternal(level, chunkPos, entityStorage -> {
-            ResourceLocation id = RegistryEntry.get(type);
+            Identifier id = RegistryEntry.get(type);
             if (id.equals(RegistryEntry.NONE)) return null;
             if (entityStorage.entitiesByType == null) return null;
             return entityStorage.entitiesByType.get(id);
@@ -73,7 +73,7 @@ public final class EntityTracker {
     }
 
     @Deprecated
-    public static @NotNull IntSet getEntities(@NotNull ServerLevel level, long chunkPos, ResourceLocation filter) {
+    public static @NotNull IntSet getEntities(@NotNull ServerLevel level, long chunkPos, Identifier filter) {
         return getInternal(level, chunkPos, entityStorage -> entityStorage.entitiesByFilter == null ? null : entityStorage.entitiesByFilter.get(filter));
     }
 
@@ -83,14 +83,14 @@ public final class EntityTracker {
 
     public static ObjectList<IntSet> getEntityList(@NotNull ServerLevel level, long chunkPos, EntityType<?> type) {
         return getEntityListInternal(level, chunkPos, entityStorage -> {
-            ResourceLocation id = RegistryEntry.get(type);
+            Identifier id = RegistryEntry.get(type);
             if (id.equals(RegistryEntry.NONE)) return null;
             if (entityStorage.entitiesByType == null) return null;
             return entityStorage.entitiesByType.get(id);
         });
     }
 
-    public static ObjectList<IntSet> getEntityList(@NotNull ServerLevel level, long chunkPos, ResourceLocation filter) {
+    public static ObjectList<IntSet> getEntityList(@NotNull ServerLevel level, long chunkPos, Identifier filter) {
         return getEntityListInternal(level, chunkPos, entityStorage -> entityStorage.entitiesByFilter == null ? null : entityStorage.entitiesByFilter.get(filter));
     }
 
@@ -127,14 +127,14 @@ public final class EntityTracker {
 
     public static void forEach(@NotNull ServerLevel level, long chunkPos,  EntityType<?> type, Consumer<Entity> entityConsumer) {
         forEachInternal(level, chunkPos, entityStorage -> {
-            ResourceLocation id = RegistryEntry.get(type);
+            Identifier id = RegistryEntry.get(type);
             if (id.equals(RegistryEntry.NONE)) return null;
             if (entityStorage.entitiesByType == null) return null;
             return entityStorage.entitiesByType.get(id);
         }, entityConsumer);
     }
 
-    public static void forEach(@NotNull ServerLevel level, long chunkPos, ResourceLocation filter, Consumer<Entity> entityConsumer) {
+    public static void forEach(@NotNull ServerLevel level, long chunkPos, Identifier filter, Consumer<Entity> entityConsumer) {
         forEachInternal(level, chunkPos, entityStorage -> entityStorage.entitiesByFilter == null ? null : entityStorage.entitiesByFilter.get(filter), entityConsumer);
     }
 
@@ -161,14 +161,14 @@ public final class EntityTracker {
 
     public static @NotNull @UnmodifiableView IntSet getEntities(@NotNull ServerLevel level, long chunkPos, int sectionIndex, EntityType<?> type) {
         return getInternal(level, chunkPos, sectionIndex, entityStorage -> {
-            ResourceLocation id = RegistryEntry.get(type);
+            Identifier id = RegistryEntry.get(type);
             if (id.equals(RegistryEntry.NONE)) return null;
             if (entityStorage.entitiesByType == null) return null;
             return entityStorage.entitiesByType.get(id);
         });
     }
 
-    public static @NotNull @UnmodifiableView IntSet getEntities(@NotNull ServerLevel level, long chunkPos, int sectionIndex, ResourceLocation filter) {
+    public static @NotNull @UnmodifiableView IntSet getEntities(@NotNull ServerLevel level, long chunkPos, int sectionIndex, Identifier filter) {
         return getInternal(level, chunkPos, sectionIndex, entityStorage -> entityStorage.entitiesByFilter == null ? null : entityStorage.entitiesByFilter.get(filter));
     }
 
@@ -190,14 +190,14 @@ public final class EntityTracker {
 
     public static void forEach(@NotNull ServerLevel level, long chunkPos, int sectionIndex, EntityType<?> type, Consumer<Entity> entityConsumer) {
         forEachInternal(level, chunkPos, sectionIndex, entityStorage -> {
-            ResourceLocation id = RegistryEntry.get(type);
+            Identifier id = RegistryEntry.get(type);
             if (id.equals(RegistryEntry.NONE)) return null;
             if (entityStorage.entitiesByType == null) return null;
             return entityStorage.entitiesByType.get(id);
         }, entityConsumer);
     }
 
-    public static void forEach(@NotNull ServerLevel level, long chunkPos, int sectionIndex, ResourceLocation filter, Consumer<Entity> entityConsumer) {
+    public static void forEach(@NotNull ServerLevel level, long chunkPos, int sectionIndex, Identifier filter, Consumer<Entity> entityConsumer) {
         forEachInternal(level, chunkPos, sectionIndex, entityStorage -> entityStorage.entitiesByFilter == null ? null : entityStorage.entitiesByFilter.get(filter), entityConsumer);
     }
 
@@ -219,7 +219,7 @@ public final class EntityTracker {
     }
 
     private static @NotNull Int2ObjectMap<EntityStorage> chunkSections(@NotNull ServerLevel level, long chunkPos) {
-        Long2ObjectMap<Int2ObjectMap<EntityStorage>> chunks = ENTITIES.get(level.dimension().location());
+        Long2ObjectMap<Int2ObjectMap<EntityStorage>> chunks = ENTITIES.get(level.dimension().identifier());
         if (chunks == null || chunks.isEmpty()) return Int2ObjectMaps.emptyMap();
         Int2ObjectMap<EntityStorage> sections = chunks.get(chunkPos);
         if (sections == null || sections.isEmpty()) return Int2ObjectMaps.emptyMap();
@@ -232,14 +232,14 @@ public final class EntityTracker {
 
     public static int count(@NotNull ServerLevel level, long chunkPos, EntityType<?> type) {
         return countInternal(level, chunkPos, storage -> {
-            ResourceLocation id = RegistryEntry.get(type);
+            Identifier id = RegistryEntry.get(type);
             if (id.equals(RegistryEntry.NONE)) return null;
             if (storage.entitiesByType == null) return null;
             return storage.entitiesByType.get(id);
         });
     }
 
-    public static int count(@NotNull ServerLevel level, long chunkPos, ResourceLocation filter) {
+    public static int count(@NotNull ServerLevel level, long chunkPos, Identifier filter) {
         return countInternal(level, chunkPos, storage -> storage.entitiesByFilter == null ? null : storage.entitiesByFilter.get(filter));
     }
 
@@ -260,14 +260,14 @@ public final class EntityTracker {
 
     public static int count(@NotNull ServerLevel level, long chunkPos, int sectionIndex, EntityType<?> type) {
         return countInternal(level, chunkPos, sectionIndex, storage -> {
-            ResourceLocation id = RegistryEntry.get(type);
+            Identifier id = RegistryEntry.get(type);
             if (id.equals(RegistryEntry.NONE)) return null;
             if (storage.entitiesByType == null) return null;
             return storage.entitiesByType.get(id);
         });
     }
 
-    public static int count(@NotNull ServerLevel level, long chunkPos, int sectionIndex, ResourceLocation filter) {
+    public static int count(@NotNull ServerLevel level, long chunkPos, int sectionIndex, Identifier filter) {
         return countInternal(level, chunkPos, sectionIndex, storage -> storage.entitiesByFilter == null ? null : storage.entitiesByFilter.get(filter));
     }
 
@@ -284,11 +284,11 @@ public final class EntityTracker {
     private static void update(@NotNull Entity entity, @NotNull ServerLevel level, boolean add) {
         final long chunkPos = entity.chunkPosition().toLong();
         final int sectionIndex = SectionPos.blockToSectionCoord(entity.getY());
-        final ResourceLocation dim = level.dimension().location();
+        final Identifier dim = level.dimension().identifier();
         final int id = entity.getId();
-        final ResourceLocation entityType = RegistryEntry.get(entity.getType());
+        final Identifier entityType = RegistryEntry.get(entity.getType());
         boolean isNone = entityType.equals(RegistryEntry.NONE);
-        final ObjectList<ResourceLocation> filters = Filterable.getMatched(entity);
+        final ObjectList<Identifier> filters = Filterable.getMatched(entity);
 
         UPDATE_TASKS.add(() -> {
             Long2ObjectMap<Int2ObjectMap<EntityStorage>> chunks = ENTITIES.computeIfAbsent(dim, key -> new Long2ObjectOpenHashMap<>());
@@ -385,14 +385,14 @@ public final class EntityTracker {
 
     private static final class EntityStorage {
         @Nullable IntSet entities;
-        @Nullable Object2ObjectMap<ResourceLocation, IntSet> entitiesByType;
-        @Nullable Object2ObjectMap<ResourceLocation, IntSet> entitiesByFilter;
+        @Nullable Object2ObjectMap<Identifier, IntSet> entitiesByType;
+        @Nullable Object2ObjectMap<Identifier, IntSet> entitiesByFilter;
 
         boolean isEmpty() {
             return entities == null && entitiesByType == null && entitiesByFilter == null;
         }
 
-        void add(int entityId, ResourceLocation type, boolean isNone, @Nullable ObjectList<ResourceLocation> matched) {
+        void add(int entityId, Identifier type, boolean isNone, @Nullable ObjectList<Identifier> matched) {
             updateEntities(entityId, true);
 
             if (!isNone) {
@@ -402,13 +402,13 @@ public final class EntityTracker {
 
             if (matched != null && !matched.isEmpty()) {
                 if (entitiesByFilter == null) entitiesByFilter = new Object2ObjectOpenHashMap<>();
-                for (ResourceLocation filterId : matched) {
+                for (Identifier filterId : matched) {
                     update(entitiesByFilter, filterId, entityId, true);
                 }
             }
         }
 
-        void remove(int entityId, ResourceLocation type, boolean isNone, @Nullable ObjectList<ResourceLocation> matched) {
+        void remove(int entityId, Identifier type, boolean isNone, @Nullable ObjectList<Identifier> matched) {
             updateEntities(entityId, false);
 
             if (!isNone && entitiesByType != null) {
@@ -417,7 +417,7 @@ public final class EntityTracker {
             }
 
             if (matched != null && !matched.isEmpty() && entitiesByFilter != null) {
-                for (ResourceLocation filterId : matched) {
+                for (Identifier filterId : matched) {
                     update(entitiesByFilter, filterId, entityId, false);
                 }
                 if (entitiesByFilter.isEmpty()) entitiesByFilter = null;
@@ -450,11 +450,11 @@ public final class EntityTracker {
     @ApiStatus.Internal
     @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     public interface Filterable {
-        ObjectList<ResourceLocation> filter$matched();
-        void filter$initialize(Object2ObjectMap<ResourceLocation, Predicate<Entity>> filters);
+        ObjectList<Identifier> filter$matched();
+        void filter$initialize(Object2ObjectMap<Identifier, Predicate<Entity>> filters);
         boolean filter$initialized();
 
-        static ObjectList<ResourceLocation> getMatched(Entity entity) {
+        static ObjectList<Identifier> getMatched(Entity entity) {
             Filterable filterable = (Filterable) entity;
             if (!filterable.filter$initialized()) filterable.filter$initialize(FILTERS);
             return filterable.filter$matched();

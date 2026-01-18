@@ -21,7 +21,7 @@ public class JsonConfig {
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     private final Map<String, JsonElement> configMap = new Object2ObjectLinkedOpenHashMap<>();
 
-    public static final Path CONFIG_DIR = FMLLoader.getGamePath().resolve("config");
+    public static final Path CONFIG_DIR = FMLLoader.getCurrent().getGameDir().resolve("config");
 
     private JsonConfig(@NotNull Path configPath, String version) {
         this.configPath = configPath;

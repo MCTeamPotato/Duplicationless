@@ -131,7 +131,7 @@ tasks.withType(JavaCompile).configureEach {
 
 String CHANGELOG = file("CHANGELOG.md").getText("UTF-8")
 
-Map<String, String[]> supportedJavaMap = new HashMap<>();
+Map<String, String[]> supportedJavaMap = new HashMap<>()
 
 supportedJavaMap.put("1.20.1", new String[]{"Java 17", "Java 21", "Java 22"})
 supportedJavaMap.put("1.16.5", new String[]{"Java 8", "Java 17", "Java 21", "Java 22"})

@@ -5,7 +5,7 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
 import me.kall.duplicationless.data.EntityTracker;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 import org.jetbrains.annotations.NotNull;
 import org.spongepowered.asm.mixin.Mixin;
@@ -16,21 +16,21 @@ import java.util.function.Predicate;
 
 @Mixin(Entity.class)
 public class EntityMixin implements EntityTracker.Filterable {
-    @Unique private ObjectList<ResourceLocation> filter$matched = null;
+    @Unique private ObjectList<Identifier> filter$matched = null;
 
     @Override
-    public ObjectList<ResourceLocation> filter$matched() {
+    public ObjectList<Identifier> filter$matched() {
         return this.filter$matched;
     }
 
     @Override
-    public void filter$initialize(@NotNull Object2ObjectMap<ResourceLocation, Predicate<Entity>> filters) {
+    public void filter$initialize(@NotNull Object2ObjectMap<Identifier, Predicate<Entity>> filters) {
         if (filters.isEmpty()) {
             this.filter$matched = ObjectLists.emptyList();
             return;
         }
         Entity entity = (Entity) (Object) this;
-        for (Map.Entry<ResourceLocation, Predicate<Entity>> entry : filters.entrySet()) {
+        for (Map.Entry<Identifier, Predicate<Entity>> entry : filters.entrySet()) {
             if (entry.getValue().test(entity)) {
                 if (this.filter$matched == null) this.filter$matched = new ObjectArrayList<>();
                 this.filter$matched.add(entry.getKey());

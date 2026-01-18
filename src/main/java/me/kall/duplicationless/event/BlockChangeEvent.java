@@ -1,7 +1,7 @@
 package me.kall.duplicationless.event;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.state.BlockState;
@@ -12,7 +12,7 @@ public class BlockChangeEvent extends Event {
     private final ServerLevel level;
     private final BlockState oldState;
     private final BlockState newState;
-    private final ResourceLocation dim;
+    private final Identifier dim;
     private final long chunkPos;
     private final long blockPos;
 
@@ -20,7 +20,7 @@ public class BlockChangeEvent extends Event {
         this.level = level;
         this.oldState = oldState;
         this.newState = newState;
-        this.dim = level.dimension().location();
+        this.dim = level.dimension().identifier();
         this.chunkPos = ChunkPos.asLong(blockPos.getX() >> 4, blockPos.getZ() >> 4);
         this.blockPos = blockPos.asLong();
     }
@@ -33,7 +33,7 @@ public class BlockChangeEvent extends Event {
         return this.chunkPos;
     }
 
-    public ResourceLocation dim() {
+    public Identifier dim() {
         return this.dim;
     }
 

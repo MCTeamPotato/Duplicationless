@@ -1,5 +1,9 @@
 package me.kall.duplicationless.data;
 
+import com.mojang.datafixers.util.Pair;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
+import com.mojang.serialization.DynamicOps;
 import it.unimi.dsi.fastutil.longs.*;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -7,14 +11,14 @@ import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import me.kall.duplicationless.util.Executor;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.*;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.saveddata.SavedData;
+import net.minecraft.world.level.saveddata.SavedDataType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -25,7 +29,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 public abstract class ChunkData<DATA, TYPE> extends SavedData {
-    public abstract @NotNull Object2ObjectMap<ResourceLocation, Long2ObjectMap<Set<DATA>>> data();
+    public abstract @NotNull Object2ObjectMap<Identifier, Long2ObjectMap<Set<DATA>>> data();
 
     public abstract boolean dataTrustable();
     public abstract @Nullable Predicate<TYPE> validation();
@@ -34,23 +38,22 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
 
     public abstract Function<DATA, Tag> dataToTag();
     public abstract Function<Tag, DATA> tagToData();
-    public abstract int dataTagType();
 
     private final LongSet rebuiltChunks = new LongOpenHashSet();
 
-    private @NotNull Long2ObjectMap<Set<DATA>> getLevelData(@NotNull ResourceLocation dim) {
+    private @NotNull Long2ObjectMap<Set<DATA>> getLevelData(@NotNull Identifier dim) {
         return this.data().computeIfAbsent(dim, d -> new Long2ObjectOpenHashMap<>());
     }
 
-    private @NotNull ResourceLocation dim(@NotNull ServerLevel level) {
-        return level.dimension().location();
+    private @NotNull Identifier dim(@NotNull ServerLevel level) {
+        return level.dimension().identifier();
     }
 
     public void rebuild(ServerLevel level) {
         Predicate<TYPE> validation = this.validation();
         if (this.dataTrustable() || validation == null) return;
 
-        ResourceLocation dim = dim(level);
+        Identifier dim = dim(level);
         Long2ObjectMap<Set<DATA>> map = this.getLevelData(dim);
 
         Long2ObjectMap<List<DATA>> copy = new Long2ObjectArrayMap<>(map.size());
@@ -92,7 +95,7 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
 
         Predicate<TYPE> validation = this.validation();
         BiFunction<DATA, ServerLevel, TYPE> function = this.dataToType();
-        ResourceLocation dim = dim(level);
+        Identifier dim = dim(level);
 
         if (this.dataTrustable() || validation == null) return;
 
@@ -160,8 +163,7 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
         return s == null || s.isEmpty() || !s.iterator().hasNext() ? Optional.empty() : Optional.of(s.iterator().next());
     }
 
-    @Override
-    public @NotNull CompoundTag save(@NotNull CompoundTag tag, HolderLookup.@NotNull Provider registries) {
+    public @NotNull CompoundTag save(@NotNull CompoundTag tag) {
         ListTag dimList = new ListTag();
 
         Function<DATA, Tag> saveFunction = this.dataToTag();
@@ -197,19 +199,19 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
 
         Function<Tag, DATA> loadFunction = this.tagToData();
 
-        ListTag dimList = tag.getList("dimensions", Tag.TAG_COMPOUND);
+        ListTag dimList = tag.getList("dimensions").orElseThrow();
         for (int d = 0; d < dimList.size(); d++) {
-            CompoundTag dimTag = dimList.getCompound(d);
-            ResourceLocation dim = ResourceLocation.parse(dimTag.getString("id"));
+            CompoundTag dimTag = dimList.getCompound(d).orElseThrow();
+            Identifier dim = Identifier.parse(dimTag.getString("id").orElseThrow());
 
             Long2ObjectMap<Set<DATA>> map = this.getLevelData(dim);
 
-            ListTag chunkList = dimTag.getList("chunks", Tag.TAG_COMPOUND);
+            ListTag chunkList = dimTag.getList("chunks").orElseThrow();
             for (int i = 0; i < chunkList.size(); i++) {
-                CompoundTag chunkTag = chunkList.getCompound(i);
-                long chunk = chunkTag.getLong("chunk");
+                CompoundTag chunkTag = chunkList.getCompound(i).orElseThrow();
+                long chunk = chunkTag.getLong("chunk").orElseThrow();
 
-                ListTag dataList = chunkTag.getList("data", this.dataTagType());
+                ListTag dataList = chunkTag.getList("data").orElseThrow();
                 Set<DATA> set = new ObjectOpenHashSet<>();
 
                 for (Tag dataTag : dataList) set.add(loadFunction.apply(dataTag));
@@ -222,11 +224,22 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
     }
 
     public static <DATA, TYPE> @NotNull ChunkData<DATA, TYPE> get(@NotNull ServerLevel level, Supplier<ChunkData<DATA, TYPE>> constructor, String name) {
-        return level.getDataStorage().computeIfAbsent(new Factory<>(constructor, (tag, provider) -> constructor.get().load(tag)), name);
+        return level.getDataStorage().computeIfAbsent(new SavedDataType<>(name, constructor, new Codec<>() {
+            @Override
+            public <T> DataResult<Pair<ChunkData<DATA, TYPE>, T>> decode(DynamicOps<T> ops, T input) {
+                return DataResult.success(Pair.of(constructor.get().load((CompoundTag) ops.convertTo(NbtOps.INSTANCE, input)), input));
+            }
+
+            @Override
+            @SuppressWarnings("unchecked")
+            public <T> DataResult<T> encode(ChunkData<DATA, TYPE> input, DynamicOps<T> ops, T prefix) {
+                return DataResult.success((T) input.save(new CompoundTag()));
+            }
+        }));
     }
 
     public static abstract class UUIDData extends ChunkData<UUID, Entity> {
-        @Override public abstract @NotNull Object2ObjectMap<ResourceLocation, Long2ObjectMap<Set<UUID>>> data();
+        @Override public abstract @NotNull Object2ObjectMap<Identifier, Long2ObjectMap<Set<UUID>>> data();
         @Override public abstract @Nullable Predicate<Entity> validation();
 
         @Override public BiFunction<UUID, ServerLevel, Entity> dataToType() {
@@ -238,16 +251,12 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
         }
 
         @Override public Function<Tag, UUID> tagToData() {
-            return tag -> UUID.fromString(tag.getAsString());
-        }
-
-        @Override public int dataTagType() {
-            return Tag.TAG_STRING;
+            return tag -> UUID.fromString(tag.asString().orElseThrow());
         }
     }
 
     public static abstract class IdData extends ChunkData<Integer, Entity> {
-        @Override public abstract @NotNull Object2ObjectMap<ResourceLocation, Long2ObjectMap<Set<Integer>>> data();
+        @Override public abstract @NotNull Object2ObjectMap<Identifier, Long2ObjectMap<Set<Integer>>> data();
         @Override public abstract @Nullable Predicate<Entity> validation();
 
         @Override public BiFunction<Integer, ServerLevel, Entity> dataToType() {
@@ -259,16 +268,12 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
         }
 
         @Override public Function<Tag, Integer> tagToData() {
-            return tag -> tag instanceof IntTag ? ((IntTag)tag).getAsInt() : -1;
-        }
-
-        @Override public int dataTagType() {
-            return Tag.TAG_INT;
+            return tag -> tag instanceof IntTag ? ((IntTag)tag).intValue() : -1;
         }
     }
 
     public static abstract class BlockData extends ChunkData<Long, BlockState> {
-        @Override public abstract @NotNull Object2ObjectMap<ResourceLocation, Long2ObjectMap<Set<Long>>> data();
+        @Override public abstract @NotNull Object2ObjectMap<Identifier, Long2ObjectMap<Set<Long>>> data();
         @Override public abstract @Nullable Predicate<BlockState> validation();
 
         public static final long ZERO = BlockPos.ZERO.asLong();
@@ -282,11 +287,7 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
         }
 
         @Override public Function<Tag, Long> tagToData() {
-            return tag -> tag instanceof LongTag ? ((LongTag)tag).getAsLong() : ZERO;
-        }
-
-        @Override public int dataTagType() {
-            return Tag.TAG_LONG;
+            return tag -> tag instanceof LongTag ? ((LongTag)tag).longValue() : ZERO;
         }
     }
 }
