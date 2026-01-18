@@ -7,7 +7,7 @@ plugins {
     id 'net.darkhax.curseforgegradle' version '1.1.+'
 }
 
-boolean isNeo = loom.platform.get().displayName() == "NeoForge"
+boolean isNeo = loom.platform.get().toString() == "NEOFORGE"
 
 configurations {
     shadow
@@ -39,8 +39,10 @@ base {
 loom {
     silentMojangMappingsLicense()
 
-    forge {
-        mixinConfig "${archives_name}.mixins.json"
+    if (!isNeo) {
+        forge {
+            mixinConfig "${archives_name}.mixins.json"
+        }
     }
 }
 
@@ -65,7 +67,7 @@ repositories {
 def versionMap = [
     "1.20.1" : [forge: "47.4.2"       , parchment: "2023.09.03"],
     "1.16.5" : [forge: "36.2.42"      , parchment: "2022.03.06"],
-    "1.21.1" : [neo  : "21.1.192"     , parchment: "2024.11.17"],
+    "1.21.1" : [neo  : "21.1.218"     , parchment: "2024.11.17"],
     "1.21.11": [neo  : "21.11.30-beta", parchment: "2025.12.20"]
 ]
 
