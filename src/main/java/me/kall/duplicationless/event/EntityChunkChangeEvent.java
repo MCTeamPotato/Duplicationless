@@ -1,7 +1,7 @@
 package me.kall.duplicationless.event;
 
 import net.minecraft.world.entity.Entity;
-import net.minecraftforge.event.entity.EntityEvent;
+import net.neoforged.neoforge.event.entity.EntityEvent;
 
 public class EntityChunkChangeEvent extends EntityEvent {
     public EntityChunkChangeEvent(Entity entity) {

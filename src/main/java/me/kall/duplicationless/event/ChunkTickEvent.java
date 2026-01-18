@@ -2,7 +2,7 @@ package me.kall.duplicationless.event;
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.chunk.LevelChunk;
-import net.minecraftforge.eventbus.api.Event;
+import net.neoforged.bus.api.Event;
 
 public abstract class ChunkTickEvent extends Event {
     private final LevelChunk chunk;

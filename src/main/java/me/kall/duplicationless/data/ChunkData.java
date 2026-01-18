@@ -7,6 +7,7 @@ import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import me.kall.duplicationless.util.Executor;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.*;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -160,7 +161,7 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
     }
 
     @Override
-    public @NotNull CompoundTag save(@NotNull CompoundTag tag) {
+    public @NotNull CompoundTag save(@NotNull CompoundTag tag, HolderLookup.@NotNull Provider registries) {
         ListTag dimList = new ListTag();
 
         Function<DATA, Tag> saveFunction = this.dataToTag();
@@ -221,7 +222,7 @@ public abstract class ChunkData<DATA, TYPE> extends SavedData {
     }
 
     public static <DATA, TYPE> @NotNull ChunkData<DATA, TYPE> get(@NotNull ServerLevel level, Supplier<ChunkData<DATA, TYPE>> constructor, String name) {
-        return level.getDataStorage().computeIfAbsent(tag -> constructor.get().load(tag), constructor, name);
+        return level.getDataStorage().computeIfAbsent(new Factory<>(constructor, (tag, provider) -> constructor.get().load(tag)), name);
     }
 
     public static abstract class UUIDData extends ChunkData<UUID, Entity> {

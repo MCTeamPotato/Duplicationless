@@ -7,23 +7,23 @@ import it.unimi.dsi.fastutil.objects.*;
 import me.kall.duplicationless.Duplicationless;
 import me.kall.duplicationless.event.EntityChunkChangeEvent;
 import me.kall.duplicationless.ext.RegistryEntry;
+import net.minecraft.core.SectionPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.core.SectionPos;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Enemy;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.EntityJoinLevelEvent;
-import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
-import net.minecraftforge.event.server.ServerAboutToStartEvent;
-import net.minecraftforge.event.server.ServerStoppedEvent;
-import net.minecraftforge.eventbus.api.Event;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.bus.api.Event;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
+import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
+import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
+import net.neoforged.neoforge.event.server.ServerStoppedEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.ApiStatus;
@@ -36,7 +36,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-@Mod.EventBusSubscriber(modid = Duplicationless.MOD_ID)
+@EventBusSubscriber(modid = Duplicationless.MOD_ID)
 public final class EntityTracker {
     private static final Logger LOGGER = LogManager.getLogger(EntityTracker.class);
     private static final Object2ObjectMap<ResourceLocation, Long2ObjectMap<Int2ObjectMap<EntityStorage>>> ENTITIES = new Object2ObjectOpenHashMap<>();
@@ -312,7 +312,7 @@ public final class EntityTracker {
 
     @SubscribeEvent
     public static void filterRegistry(@NotNull ServerAboutToStartEvent event) {
-        MinecraftForge.EVENT_BUS.post(new EntityFilterRegistryEvent());
+        NeoForge.EVENT_BUS.post(new EntityFilterRegistryEvent());
         LOGGER.info("Duplicationless Entity Tracker has initialized successfully.");
     }
 
@@ -371,11 +371,9 @@ public final class EntityTracker {
     }
 
     @SubscribeEvent
-    public static void taskUpdate(TickEvent.@NotNull ServerTickEvent event) {
-        if (event.phase.equals(TickEvent.Phase.START)) {
-            Runnable task;
-            while ((task = EntityTracker.UPDATE_TASKS.poll()) != null) task.run();
-        }
+    public static void taskUpdate(ServerTickEvent.Pre event) {
+        Runnable task;
+        while ((task = EntityTracker.UPDATE_TASKS.poll()) != null) task.run();
     }
 
     @SubscribeEvent

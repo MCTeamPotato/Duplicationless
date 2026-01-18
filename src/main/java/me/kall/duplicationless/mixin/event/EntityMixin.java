@@ -9,6 +9,7 @@ import net.minecraft.core.SectionPos;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraftforge.common.MinecraftForge;
+import net.neoforged.neoforge.common.NeoForge;
 import org.jetbrains.annotations.NotNull;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -28,12 +29,12 @@ public abstract class EntityMixin {
 
             boolean isSectionChange = SectionPos.blockToSectionCoord(Mth.floor(this.getY())) != SectionPos.blockToSectionCoord(Mth.floor(y));
 
-            if (isSectionChange) MinecraftForge.EVENT_BUS.post(new EntityChunkChangeEvent.Section.Before(entity));
-            if (differentChunk) MinecraftForge.EVENT_BUS.post(new EntityChunkChangeEvent.Before(entity));
+            if (isSectionChange) NeoForge.EVENT_BUS.post(new EntityChunkChangeEvent.Section.Before(entity));
+            if (differentChunk) NeoForge.EVENT_BUS.post(new EntityChunkChangeEvent.Before(entity));
             original.call(x, y, z);
 
-            if (isSectionChange) MinecraftForge.EVENT_BUS.post(new EntityChunkChangeEvent.Section.After(entity));
-            if (differentChunk) MinecraftForge.EVENT_BUS.post(new EntityChunkChangeEvent.After(entity));
+            if (isSectionChange) NeoForge.EVENT_BUS.post(new EntityChunkChangeEvent.Section.After(entity));
+            if (differentChunk) NeoForge.EVENT_BUS.post(new EntityChunkChangeEvent.After(entity));
         } catch (Throwable ignored) {}
     }
 }

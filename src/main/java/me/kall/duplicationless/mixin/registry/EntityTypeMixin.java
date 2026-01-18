@@ -1,9 +1,9 @@
 package me.kall.duplicationless.mixin.registry;
 
 import me.kall.duplicationless.ext.RegistryEntry;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
-import net.minecraftforge.registries.ForgeRegistries;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 
@@ -14,7 +14,7 @@ public abstract class EntityTypeMixin implements RegistryEntry {
     @Override
     public ResourceLocation registry$getName() {
         if (this.registry$name == null) {
-            ResourceLocation id = ForgeRegistries.ENTITY_TYPES.getKey((EntityType<?>) (Object) this);
+            ResourceLocation id = BuiltInRegistries.ENTITY_TYPE.getKeyOrNull((EntityType<?>) (Object) this);
             this.registry$name = id == null ? RegistryEntry.NONE : id;
         }
         return this.registry$name;

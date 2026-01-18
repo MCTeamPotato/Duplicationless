@@ -5,10 +5,10 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import me.kall.duplicationless.Duplicationless;
 import net.minecraft.server.MinecraftServer;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.server.ServerLifecycleHooks;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.ApiStatus;
@@ -16,7 +16,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
-@Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.FORGE, modid = Duplicationless.MOD_ID)
+@EventBusSubscriber(modid = Duplicationless.MOD_ID)
 public class Executor {
     private static final Int2ObjectMap<List<Runnable>> TASKS = new Int2ObjectOpenHashMap<>();
     private static final Logger LOGGER = LogManager.getLogger(Executor.class);
@@ -45,14 +45,11 @@ public class Executor {
 
     @SubscribeEvent
     @ApiStatus.Internal
-    public static void onServerTick(TickEvent.@NotNull ServerTickEvent event) {
-        if (event.phase == TickEvent.Phase.START) {
-            MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
-            int tick = server.getTickCount();
-            List<Runnable> tasks = TASKS.get(tick);
-            if (tasks == null) return;
-            tasks.forEach(Runnable::run);
-            TASKS.remove(tick);
-        }
+    public static void onServerTick(ServerTickEvent.@NotNull Pre event) {
+        int tick = event.getServer().getTickCount();
+        List<Runnable> tasks = TASKS.get(tick);
+        if (tasks == null) return;
+        tasks.forEach(Runnable::run);
+        TASKS.remove(tick);
     }
 }

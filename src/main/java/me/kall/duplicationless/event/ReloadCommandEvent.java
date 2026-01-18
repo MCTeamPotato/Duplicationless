@@ -1,7 +1,7 @@
 package me.kall.duplicationless.event;
 
 import net.minecraft.server.MinecraftServer;
-import net.minecraftforge.eventbus.api.Event;
+import net.neoforged.bus.api.Event;
 
 public class ReloadCommandEvent extends Event {
     public final MinecraftServer server;
