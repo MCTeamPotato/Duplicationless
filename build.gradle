@@ -151,7 +151,6 @@ tasks.register("publishCurseForge", TaskPublishCurseForge) {
         mainFile.addModLoader(isNeo ? "NeoForge" : "Forge")
         mainFile.addJavaVersion(supportedJavaMap.get(minecraft_version))
         mainFile.addGameVersion(minecraft_version)
-        mainFile.addRequirement("duplicationless")
     
         UploadArtifact sourcesFile = mainFile.withAdditionalFile(sourcesJar)
         sourcesFile.changelog = CHANGELOG
