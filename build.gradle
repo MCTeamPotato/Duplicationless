@@ -140,6 +140,7 @@ supportedJavaMap.put("1.21.11", new String[]{"Java 21", "Java 22"})
 
 tasks.register("publishCurseForge", TaskPublishCurseForge) {
     if (cf_project_id.isEmpty()) {
+        System.out.println("CurseForge Project ID: " + cf_project_id)
         apiToken = System.getenv("CURSEFORGE_TOKEN")
         disableVersionDetection()
     
