@@ -16,7 +16,7 @@ configurations {
 
 shadowJar {
     configurations = [project.configurations.shadow]
-    relocate "com.llamalad7.mixinextras", "me.kall.${archives_name}.mixinextras"
+    if (!isNeo) relocate "com.llamalad7.mixinextras", "me.kall.${archives_name}.mixinextras"
     mergeServiceFiles()
     archiveClassifier = "dev-shadow"
     exclude "LICENSE_MixinExtras"
