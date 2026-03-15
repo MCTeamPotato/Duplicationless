@@ -1,20 +1,21 @@
 package me.kall.duplicationless.network;
 
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.function.Supplier;
-
-public abstract class Handler {
-    public void handle(@NotNull Supplier<NetworkEvent.Context> contextSupplier) {
-        contextSupplier.get().setPacketHandled(true);
-        contextSupplier.get().enqueueWork(() -> {
-            ServerPlayer player = contextSupplier.get().getSender();
-            this.handle(player, player == null ? null : player.serverLevel());
+public abstract class Handler implements CustomPacketPayload {
+    public void handle(@NotNull IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (context.player() instanceof ServerPlayer player) {
+                this.handle(player, player.serverLevel());
+            } else {
+                this.handle(null, null);
+            }
         });
     }
 
