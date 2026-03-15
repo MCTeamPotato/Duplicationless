@@ -3,7 +3,7 @@ package me.kall.duplicationless.network;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraftforge.fml.network.NetworkEvent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -14,7 +14,7 @@ public abstract class Handler {
         contextSupplier.get().setPacketHandled(true);
         contextSupplier.get().enqueueWork(() -> {
             ServerPlayer player = contextSupplier.get().getSender();
-            this.handle(player, player == null ? null : player.serverLevel());
+            this.handle(player, player == null ? null : player.getLevel());
         });
     }
 
