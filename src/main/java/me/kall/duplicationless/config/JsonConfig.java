@@ -1,14 +1,13 @@
 package me.kall.duplicationless.config;
 
 import com.google.gson.*;
-import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
-import net.minecraftforge.fml.loading.FMLLoader;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -19,10 +18,20 @@ import java.util.stream.StreamSupport;
 public class JsonConfig {
     private final Path configPath;
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
-    private final Map<String, JsonElement> configMap = new Object2ObjectLinkedOpenHashMap<>();
+    private final LinkedHashMap<String, JsonElement> configMap = new LinkedHashMap<>();
     private static final JsonParser PARSER = new JsonParser();
 
-    public static final Path CONFIG_DIR = FMLLoader.getGamePath().resolve("config");
+    public static final Path CONFIG_DIR;
+
+    static {
+        try {
+            CONFIG_DIR = Path.of(JsonConfig.class.getProtectionDomain().getCodeSource().getLocation().toURI()).normalize().toAbsolutePath().getParent().getParent().resolve("config");
+        } catch (Exception exception) {
+            System.err.println("Exception finding config directory");
+            exception.printStackTrace(System.err);
+            throw new RuntimeException(exception);
+        }
+    }
 
     private JsonConfig(@NotNull Path configPath, String version) {
         this.configPath = configPath;
@@ -41,18 +50,18 @@ public class JsonConfig {
 
     public JsonConfig initialize() {
         if (Files.exists(this.configPath)) {
-            read();
+            this.read();
         } else {
-            create();
+            this.create();
         }
         return this;
     }
 
     private void read() {
-        try (BufferedReader reader = new BufferedReader(new FileReader(configPath.toFile()))) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(this.configPath.toFile()))) {
             JsonObject fileConfig = PARSER.parse(reader).getAsJsonObject();
 
-            Map<String, JsonElement> defaultConfig = new Object2ObjectLinkedOpenHashMap<>(this.configMap);
+            Map<String, JsonElement> defaultConfig = new LinkedHashMap<>(this.configMap);
 
             this.configMap.clear();
             for (Map.Entry<String, JsonElement> entry : fileConfig.entrySet()) {
@@ -68,7 +77,7 @@ public class JsonConfig {
             JsonElement fileVersion = fileConfig.get("Version");
             if (fileVersion == null || !fileVersion.getAsString().equals(defaultConfig.get("Version").getAsString())) {
                 this.configMap.put("Version", defaultConfig.get("Version"));
-                saveToFile();
+                this.saveToFile();
             }
         } catch (IOException e) {
             throw new RuntimeException("Failed to load config file: " + configPath, e);
@@ -78,23 +87,23 @@ public class JsonConfig {
     private void create() {
         try {
             Files.createDirectories(this.configPath.getParent());
-            saveToFile();
+            this.saveToFile();
         } catch (IOException e) {
             throw new RuntimeException("Failed to create config file: " + configPath, e);
         }
     }
 
     public void saveToFile() {
-        try (Writer writer = new FileWriter(configPath.toFile())) {
-            gson.toJson(configMap, writer);
+        try (Writer writer = new FileWriter(this.configPath.toFile())) {
+            this.gson.toJson(this.configMap, writer);
         } catch (IOException e) {
-            throw new RuntimeException("Failed to save config file: " + configPath, e);
+            throw new RuntimeException("Failed to save config file: " + this.configPath, e);
         }
     }
 
     @SuppressWarnings("UnusedReturnValue")
     public JsonConfig put(String key, Object value) {
-        this.configMap.put(key, gson.toJsonTree(value));
+        this.configMap.put(key, this.gson.toJsonTree(value));
         return this;
     }
 
@@ -103,38 +112,38 @@ public class JsonConfig {
     }
 
     public int getInt(String key) {
-        return get(key).getAsInt();
+        return this.get(key).getAsInt();
     }
 
     public double getDouble(String key) {
-        return get(key).getAsDouble();
+        return this.get(key).getAsDouble();
     }
 
     public float getFloat(String key) {
-        return get(key).getAsFloat();
+        return this.get(key).getAsFloat();
     }
 
     public long getLong(String key) {
-        return get(key).getAsLong();
+        return this.get(key).getAsLong();
     }
 
     public boolean getBoolean(String key) {
-        return get(key).getAsBoolean();
+        return this.get(key).getAsBoolean();
     }
 
     public String getString(String key) {
-        return get(key).getAsString();
+        return this.get(key).getAsString();
     }
 
     public <T> Stream<T> getStream(String key, @NotNull Class<T> valueType) {
-        return StreamSupport.stream(this.configMap.get(key).getAsJsonArray().spliterator(), false).map(element -> gson.fromJson(element, valueType));
+        return StreamSupport.stream(this.configMap.get(key).getAsJsonArray().spliterator(), false).map(element -> this.gson.fromJson(element, valueType));
     }
 
     public <T> List<T> getList(String key, @NotNull Class<T> valueType) {
-        return getStream(key, valueType).collect(Collectors.toList());
+        return this.getStream(key, valueType).collect(Collectors.toList());
     }
 
     public <T> Set<T> getSet(String key, @NotNull Class<T> valueType) {
-        return getStream(key, valueType).collect(Collectors.toSet());
+        return this.getStream(key, valueType).collect(Collectors.toSet());
     }
 }

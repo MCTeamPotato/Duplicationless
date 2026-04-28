@@ -47,6 +47,7 @@ loom {
 }
 
 repositories {
+    maven { name = "CaffeineMC"; url = "https://maven.caffeinemc.net/releases"}
     maven { name = "ParchmentMC";    url = 'https://maven.parchmentmc.org' }
     maven { name = "MinecraftForge"; url = "https://files.minecraftforge.net/maven/" }
     maven { name = "NeoForged";      url = 'https://maven.neoforged.net/releases' }
@@ -65,10 +66,10 @@ repositories {
 }
 
 def versionMap = [
-    "1.20.1" : [forge: "47.4.2"       , parchment: "2023.09.03"],
-    "1.16.5" : [forge: "36.2.42"      , parchment: "2022.03.06"],
-    "1.21.1" : [neo  : "21.1.218"     , parchment: "2024.11.17"],
-    "1.21.11": [neo  : "21.11.30-beta", parchment: "2025.12.20"]
+    "1.20.1" : [forge: "47.4.2"       , parchment: "2023.09.03", embeddium: "5681725"],
+    "1.16.5" : [forge: "36.2.42"      , parchment: "2022.03.06", embeddium: "5322311"],
+    "1.21.1" : [neo  : "21.1.218"     , parchment: "2024.11.17", embeddium: "6118392"],
+    "1.21.11": [neo  : "21.11.30-beta", parchment: "2025.12.20", sodium: "7366773"]
 ]
 
 HashMap<String, String> versionInfo = versionMap[minecraft_version]
@@ -84,6 +85,13 @@ dependencies {
         neoForge "net.neoforged:neoforge:${versionInfo.neo}"
     } else {
         forge "net.minecraftforge:forge:${project.minecraft_version}-${versionInfo.forge}"
+    }
+
+    if (project.minecraft_version == "1.21.11") {
+        modImplementation("curse.maven:sodium-394468:${versionInfo.sodium}")
+        implementation "net.caffeinemc:sodium-neoforge-api:0.8.0+mc1.21.11"
+    } else {
+        modImplementation("curse.maven:embeddium-908741:${versionInfo.embeddium}")
     }
 
     if (!isNeo) shadow(annotationProcessor("io.github.llamalad7:mixinextras-common:${project.mixinextras_version}"))
