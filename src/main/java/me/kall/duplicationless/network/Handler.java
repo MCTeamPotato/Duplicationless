@@ -10,7 +10,7 @@ import org.jetbrains.annotations.Nullable;
 
 public abstract class Handler implements CustomPacketPayload {
     private final ThreadLocal<IPayloadContext> context = new ThreadLocal<>();
-    
+
     public void handle(@NotNull IPayloadContext context) {
         context.enqueueWork(() -> {
             this.context.set(context);
