@@ -9,13 +9,17 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public abstract class Handler implements CustomPacketPayload {
+    private final ThreadLocal<IPayloadContext> context = new ThreadLocal<>();
+
     public void handle(@NotNull IPayloadContext context) {
         context.enqueueWork(() -> {
+            this.context.set(context);
             if (context.player() instanceof ServerPlayer player) {
                 this.handle(player, player.level());
             } else {
                 this.handle(null, null);
             }
+            this.context.remove();
         });
     }
 
