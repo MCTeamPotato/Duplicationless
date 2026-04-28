@@ -22,17 +22,7 @@ public class JsonConfig {
     private final LinkedHashMap<String, JsonElement> configMap = new LinkedHashMap<>();
     private static final JsonParser PARSER = new JsonParser();
 
-    public static final Path CONFIG_DIR;
-
-    static {
-        try {
-            CONFIG_DIR = Paths.get(JsonConfig.class.getProtectionDomain().getCodeSource().getLocation().toURI()).normalize().toAbsolutePath().getParent().getParent().resolve("config");
-        } catch (Exception exception) {
-            System.err.println("Exception finding config directory");
-            exception.printStackTrace(System.err);
-            throw new RuntimeException(exception);
-        }
-    }
+    public static final Path CONFIG_DIR = Path.of(System.getProperty("user.dir")).resolve("config");
 
     private JsonConfig(@NotNull Path configPath, String version) {
         this.configPath = configPath;
