@@ -7,6 +7,7 @@ import org.jetbrains.annotations.NotNull;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,7 +26,7 @@ public class JsonConfig {
 
     static {
         try {
-            CONFIG_DIR = Path.of(JsonConfig.class.getProtectionDomain().getCodeSource().getLocation().toURI()).normalize().toAbsolutePath().getParent().getParent().resolve("config");
+            CONFIG_DIR = Paths.get(JsonConfig.class.getProtectionDomain().getCodeSource().getLocation().toURI()).normalize().toAbsolutePath().getParent().getParent().resolve("config");
         } catch (Exception exception) {
             System.err.println("Exception finding config directory");
             exception.printStackTrace(System.err);
