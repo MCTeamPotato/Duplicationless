@@ -9,6 +9,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraftforge.common.MinecraftForge;
+import org.jetbrains.annotations.NotNull;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -22,7 +23,7 @@ public abstract class ServerLevelMixin {
     }
 
     @WrapMethod(method = "tickChunk")
-    private void onChunkTick(LevelChunk chunk, int randomTickSpeed, Operation<Void> original) {
+    private void onChunkTick(LevelChunk chunk, int randomTickSpeed, @NotNull Operation<Void> original) {
         ServerLevel level = (ServerLevel) (Object) this;
         MinecraftForge.EVENT_BUS.post(new ChunkTickEvent.Pre(chunk, level, randomTickSpeed));
         original.call(chunk, randomTickSpeed);

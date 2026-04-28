@@ -10,11 +10,15 @@ import org.jetbrains.annotations.Nullable;
 import java.util.function.Supplier;
 
 public abstract class Handler {
+    private final ThreadLocal<NetworkEvent.Context> context = new ThreadLocal<>();
+
     public void handle(@NotNull Supplier<NetworkEvent.Context> contextSupplier) {
         contextSupplier.get().setPacketHandled(true);
         contextSupplier.get().enqueueWork(() -> {
             ServerPlayer player = contextSupplier.get().getSender();
+            this.context.set(contextSupplier.get());
             this.handle(player, player == null ? null : player.serverLevel());
+            this.context.remove();
         });
     }
 
