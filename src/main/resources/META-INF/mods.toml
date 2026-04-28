@@ -10,4 +10,4 @@ displayName = "Duplicationless"
 authors = "Kall"
 description = '''
 '''
-#logoFile = ""
+logoFile = "logo.jpg"
