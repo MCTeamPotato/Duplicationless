@@ -10,7 +10,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.function.Supplier;
 
 public abstract class Handler {
-    private final ThreadLocal<NetworkEvent.Context> context = new ThreadLocal<>();
+    protected final ThreadLocal<NetworkEvent.Context> context = new ThreadLocal<>();
 
     public void handle(@NotNull Supplier<NetworkEvent.Context> contextSupplier) {
         contextSupplier.get().setPacketHandled(true);
