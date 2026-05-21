@@ -1,15 +1,20 @@
 package me.kall.duplicationless.util;
 
+import net.minecraft.core.particles.ParticleType;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.level.block.Block;
-import org.jetbrains.annotations.NotNull;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
+import org.jetbrains.annotations.NotNull;
+
+import java.util.Optional;
 
 public class RegistryEntries {
     public static @NotNull Item item(Identifier id) {
@@ -28,5 +33,17 @@ public class RegistryEntries {
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) throw new IllegalStateException("Server unavailable. Cannot read enchantment " + id.toString());
         return server.registryAccess().lookupOrThrow(Registries.ENCHANTMENT).getOptional(id).orElseThrow(() -> new IllegalStateException("Missing key in Enchantment: " + id));
+    }
+
+    public static @NotNull ParticleType<?> particle(ResourceLocation id) {
+        return Optional.ofNullable(BuiltInRegistries.PARTICLE_TYPE.get(id)).orElseThrow(() -> new IllegalStateException("Missing key in ParticleType: " + id));
+    }
+
+    public static @NotNull MobEffect effect(ResourceLocation id) {
+        return Optional.ofNullable(BuiltInRegistries.MOB_EFFECT.get(id)).orElseThrow(() -> new IllegalStateException("Missing key in MobEffect: " + id));
+    }
+
+    public static @NotNull Attribute attribute(ResourceLocation id) {
+        return Optional.ofNullable(BuiltInRegistries.ATTRIBUTE.get(id)).orElseThrow(() -> new IllegalStateException("Missing key in Attribute: " + id));
     }
 }

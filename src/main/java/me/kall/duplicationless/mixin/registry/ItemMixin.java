@@ -9,8 +9,7 @@ import org.spongepowered.asm.mixin.Unique;
 
 @Mixin(Item.class)
 public abstract class ItemMixin implements RegistryEntry {
-    @Unique
-    private Identifier registry$name;
+    @Unique private Identifier registry$name;
 
     @Override
     public Identifier registry$getName() {
