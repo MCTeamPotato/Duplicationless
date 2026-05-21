@@ -9,7 +9,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public abstract class Handler implements CustomPacketPayload {
-    private final ThreadLocal<IPayloadContext> context = new ThreadLocal<>();
+    protected final ThreadLocal<IPayloadContext> context = new ThreadLocal<>();
 
     public void handle(@NotNull IPayloadContext context) {
         context.enqueueWork(() -> {

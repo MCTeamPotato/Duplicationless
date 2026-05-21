@@ -1,2 +1,2 @@
-# 1.1.6
-- introduce SodiumOptions util
+# 1.2.0
+- Add registry mixins/util, update tracking
