@@ -14,8 +14,6 @@ import net.minecraft.world.level.block.Block;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Optional;
-
 public class RegistryEntries {
     public static @NotNull Item item(Identifier id) {
         return BuiltInRegistries.ITEM.getOptional(id).orElseThrow(() -> new IllegalStateException("Missing key in Item: " + id));
@@ -35,15 +33,15 @@ public class RegistryEntries {
         return server.registryAccess().lookupOrThrow(Registries.ENCHANTMENT).getOptional(id).orElseThrow(() -> new IllegalStateException("Missing key in Enchantment: " + id));
     }
 
-    public static @NotNull ParticleType<?> particle(ResourceLocation id) {
-        return Optional.ofNullable(BuiltInRegistries.PARTICLE_TYPE.get(id)).orElseThrow(() -> new IllegalStateException("Missing key in ParticleType: " + id));
+    public static @NotNull ParticleType<?> particle(Identifier id) {
+        return BuiltInRegistries.PARTICLE_TYPE.getOptional(id).orElseThrow(() -> new IllegalStateException("Missing key in ParticleType: " + id));
     }
 
-    public static @NotNull MobEffect effect(ResourceLocation id) {
-        return Optional.ofNullable(BuiltInRegistries.MOB_EFFECT.get(id)).orElseThrow(() -> new IllegalStateException("Missing key in MobEffect: " + id));
+    public static @NotNull MobEffect effect(Identifier id) {
+        return BuiltInRegistries.MOB_EFFECT.getOptional(id).orElseThrow(() -> new IllegalStateException("Missing key in MobEffect: " + id));
     }
 
-    public static @NotNull Attribute attribute(ResourceLocation id) {
-        return Optional.ofNullable(BuiltInRegistries.ATTRIBUTE.get(id)).orElseThrow(() -> new IllegalStateException("Missing key in Attribute: " + id));
+    public static @NotNull Attribute attribute(Identifier id) {
+        return BuiltInRegistries.ATTRIBUTE.getOptional(id).orElseThrow(() -> new IllegalStateException("Missing key in Attribute: " + id));
     }
 }
