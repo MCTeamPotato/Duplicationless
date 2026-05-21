@@ -393,48 +393,46 @@ public final class EntityTracker {
         @Nullable Object2ObjectMap<ResourceLocation, IntSet> entitiesByFilter;
 
         boolean isEmpty() {
-            return entities == null && entitiesByType == null && entitiesByFilter == null;
+            return this.entities == null && this.entitiesByType == null && this.entitiesByFilter == null;
         }
 
         void add(int entityId, ResourceLocation type, boolean isNone, @Nullable ObjectList<ResourceLocation> matched) {
-            updateEntities(entityId, true);
+            this.updateEntities(entityId, true);
 
             if (!isNone) {
-                if (entitiesByType == null) entitiesByType = new Object2ObjectOpenHashMap<>();
-                update(entitiesByType, type, entityId, true);
+                if (this.entitiesByType == null) this.entitiesByType = new Object2ObjectOpenHashMap<>();
+                update(this.entitiesByType, type, entityId, true);
             }
 
             if (matched != null && !matched.isEmpty()) {
-                if (entitiesByFilter == null) entitiesByFilter = new Object2ObjectOpenHashMap<>();
+                if (this.entitiesByFilter == null) this.entitiesByFilter = new Object2ObjectOpenHashMap<>();
                 for (ResourceLocation filterId : matched) {
-                    update(entitiesByFilter, filterId, entityId, true);
+                    update(this.entitiesByFilter, filterId, entityId, true);
                 }
             }
         }
 
         void remove(int entityId, ResourceLocation type, boolean isNone, @Nullable ObjectList<ResourceLocation> matched) {
-            updateEntities(entityId, false);
+            this.updateEntities(entityId, false);
 
-            if (!isNone && entitiesByType != null) {
-                update(entitiesByType, type, entityId, false);
-                if (entitiesByType.isEmpty()) entitiesByType = null;
+            if (!isNone && this.entitiesByType != null) {
+                update(this.entitiesByType, type, entityId, false);
+                if (this.entitiesByType.isEmpty()) this.entitiesByType = null;
             }
 
-            if (matched != null && !matched.isEmpty() && entitiesByFilter != null) {
-                for (ResourceLocation filterId : matched) {
-                    update(entitiesByFilter, filterId, entityId, false);
-                }
-                if (entitiesByFilter.isEmpty()) entitiesByFilter = null;
+            if (matched != null && !matched.isEmpty() && this.entitiesByFilter != null) {
+                for (ResourceLocation filterId : matched) update(this.entitiesByFilter, filterId, entityId, false);
+                if (this.entitiesByFilter.isEmpty()) this.entitiesByFilter = null;
             }
         }
 
         private void updateEntities(int entityId, boolean add) {
             if (add) {
-                if (entities == null) entities = new IntOpenHashSet();
-                entities.add(entityId);
-            } else if (entities != null) {
-                entities.remove(entityId);
-                if (entities.isEmpty()) entities = null;
+                if (this.entities == null) this.entities = new IntOpenHashSet();
+                this.entities.add(entityId);
+            } else if (this.entities != null) {
+                this.entities.remove(entityId);
+                if (this.entities.isEmpty()) this.entities = null;
             }
         }
 

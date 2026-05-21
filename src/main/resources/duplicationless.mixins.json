@@ -14,9 +14,12 @@
     "event.EntityMixin",
     "event.ReloadCommandMixin",
     "event.ServerLevelMixin",
+    "registry.AttributeMixin",
     "registry.BlockMixin",
     "registry.EntityTypeMixin",
-    "registry.ItemMixin"
+    "registry.ItemMixin",
+    "registry.MobEffectMixin",
+    "registry.ParticleTypeMixin"
   ],
   "injectors": {
     "defaultRequire": 1
