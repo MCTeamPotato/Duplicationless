@@ -1,17 +1,20 @@
 package me.kall.duplicationless.util;
 
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.particles.ParticleType;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.effect.MobEffect;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.level.block.Block;
-import org.jetbrains.annotations.NotNull;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
+import org.jetbrains.annotations.NotNull;
+
+import java.util.Optional;
 
 public class RegistryEntries {
     public static @NotNull Item item(ResourceLocation id) {
@@ -33,14 +36,14 @@ public class RegistryEntries {
     }
 
     public static @NotNull ParticleType<?> particle(ResourceLocation id) {
-        return Optional.ofNullable(ForgeRegistries.PARTICLE_TYPES.getValue(id)).orElseThrow(() -> new IllegalStateException("Missing key in ParticleType: " + id));
+        return Optional.ofNullable(BuiltInRegistries.PARTICLE_TYPE.get(id)).orElseThrow(() -> new IllegalStateException("Missing key in ParticleType: " + id));
     }
 
     public static @NotNull MobEffect effect(ResourceLocation id) {
-        return Optional.ofNullable(ForgeRegistries.MOB_EFFECTS.getValue(id)).orElseThrow(() -> new IllegalStateException("Missing key in MobEffect: " + id));
+        return Optional.ofNullable(BuiltInRegistries.MOB_EFFECT.get(id)).orElseThrow(() -> new IllegalStateException("Missing key in MobEffect: " + id));
     }
 
     public static @NotNull Attribute attribute(ResourceLocation id) {
-        return Optional.ofNullable(ForgeRegistries.ATTRIBUTES.getValue(id)).orElseThrow(() -> new IllegalStateException("Missing key in Attribute: " + id));
+        return Optional.ofNullable(BuiltInRegistries.ATTRIBUTE.get(id)).orElseThrow(() -> new IllegalStateException("Missing key in Attribute: " + id));
     }
 }

@@ -2,8 +2,8 @@ package me.kall.duplicationless.mixin.registry;
 
 import me.kall.duplicationless.ext.RegistryEntry;
 import net.minecraft.core.particles.ParticleType;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.registries.ForgeRegistries;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 
@@ -14,7 +14,7 @@ public abstract class ParticleTypeMixin implements RegistryEntry {
     @Override
     public ResourceLocation registry$getName() {
         if (this.registry$name == null) {
-            ResourceLocation id = ForgeRegistries.PARTICLE_TYPES.getKey((ParticleType<?>) (Object) this);
+            ResourceLocation id = BuiltInRegistries.PARTICLE_TYPE.getKey((ParticleType<?>) (Object) this);
             this.registry$name = id == null ? RegistryEntry.NONE : id;
         }
         return null;

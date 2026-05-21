@@ -1,9 +1,9 @@
 package me.kall.duplicationless.mixin.registry;
 
 import me.kall.duplicationless.ext.RegistryEntry;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.ai.attributes.Attribute;
-import net.minecraftforge.registries.ForgeRegistries;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 
@@ -14,7 +14,7 @@ public abstract class AttributeMixin implements RegistryEntry {
     @Override
     public ResourceLocation registry$getName() {
         if (this.registry$name == null) {
-            ResourceLocation id = ForgeRegistries.ATTRIBUTES.getKey((Attribute) (Object) this);
+            ResourceLocation id = BuiltInRegistries.ATTRIBUTE.getKey((Attribute) (Object) this);
             this.registry$name = id == null ? RegistryEntry.NONE : id;
         }
         return this.registry$name;

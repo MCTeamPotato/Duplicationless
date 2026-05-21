@@ -54,7 +54,7 @@ public interface RegistryEntry {
     }
 
     static ResourceLocation get(@NotNull MobEffectInstance effectInstance) {
-        return get(effectInstance.getEffect());
+        return get(effectInstance.getEffect().value());
     }
 
     static ResourceLocation get(MobEffect effect) {
@@ -62,7 +62,7 @@ public interface RegistryEntry {
     }
 
     static ResourceLocation get(@NotNull AttributeInstance attributeInstance) {
-        return get(attributeInstance.getAttribute());
+        return get(attributeInstance.getAttribute().value());
     }
 
     static ResourceLocation get(Attribute attribute) {
