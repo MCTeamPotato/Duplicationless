@@ -35,7 +35,7 @@ public class RegistryEntries {
     }
 
     public static @NotNull MobEffect effect(ResourceLocation id) {
-        return Optional.ofNullable(ForgeRegistries.MOB_EFFECTS.getValue(id)).orElseThrow(() -> new IllegalStateException("Missing key in MobEffect: " + id));
+        return Optional.ofNullable(ForgeRegistries.POTIONS.getValue(id)).orElseThrow(() -> new IllegalStateException("Missing key in MobEffect: " + id));
     }
 
     public static @NotNull Attribute attribute(ResourceLocation id) {

@@ -14,7 +14,7 @@ public abstract class MobEffectMixin implements RegistryEntry {
     @Override
     public ResourceLocation registry$getName() {
         if (this.registry$name == null) {
-            ResourceLocation id = ForgeRegistries.MOB_EFFECTS.getKey((MobEffect) (Object) this);
+            ResourceLocation id = ForgeRegistries.POTIONS.getKey((MobEffect) (Object) this);
             this.registry$name = id == null ? RegistryEntry.NONE : id;
         }
         return this.registry$name;
