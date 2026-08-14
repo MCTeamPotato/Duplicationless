@@ -16,8 +16,8 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.EntityJoinLevelEvent;
-import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
+import net.minecraftforge.event.entity.EntityJoinWorldEvent;
+import net.minecraftforge.event.entity.EntityLeaveWorldEvent;
 import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -35,7 +35,7 @@ import java.util.function.Predicate;
 public final class ClientEntityTracker {
     private static final Logger LOGGER = LogManager.getLogger(ClientEntityTracker.class);
 
-    private static final AbstractEntityTracker<ClientLevel> INSTANCE = new AbstractEntityTracker<>() {
+    private static final AbstractEntityTracker<ClientLevel> INSTANCE = new AbstractEntityTracker<ClientLevel>() {
         @Override
         protected void assertThread(ClientLevel level) {
             if (!Minecraft.getInstance().isSameThread()) throw new UnsupportedOperationException("ClientEntityTracker is only available on the client thread!");
@@ -149,7 +149,7 @@ public final class ClientEntityTracker {
     }
 
     @SubscribeEvent
-    public static void filterRegistry(ClientPlayerNetworkEvent.LoggingIn event) {
+    public static void filterRegistry(ClientPlayerNetworkEvent.LoggedInEvent event) {
         MinecraftForge.EVENT_BUS.post(new ClientEntityFilterRegistryEvent());
         LOGGER.info("Duplicationless Client Entity Tracker has initialized successfully.");
     }
@@ -161,33 +161,33 @@ public final class ClientEntityTracker {
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void onJoin(@NotNull EntityJoinLevelEvent event) {
-        if (event.getLevel() instanceof ClientLevel level) update(event.getEntity(), level, true);
+    public static void onJoin(@NotNull EntityJoinWorldEvent event) {
+        if (event.getWorld() instanceof ClientLevel) update(event.getEntity(), (ClientLevel) event.getWorld(), true);
     }
 
     @SubscribeEvent
-    public static void onLeave(@NotNull EntityLeaveLevelEvent event) {
-        if (event.getLevel() instanceof ClientLevel level) update(event.getEntity(), level, false);
+    public static void onLeave(@NotNull EntityLeaveWorldEvent event) {
+        if (event.getWorld() instanceof ClientLevel) update(event.getEntity(), (ClientLevel) event.getWorld(), false);
     }
 
     @SubscribeEvent
     public static void beforeChunkChange(EntityChunkChangeEvent.@NotNull Before event) {
-        if (event.getEntity().level() instanceof ClientLevel level) update(event.getEntity(), level, false);
+        if (event.getEntity().level instanceof ClientLevel) update(event.getEntity(), (ClientLevel) event.getEntity().level, false);
     }
 
     @SubscribeEvent
     public static void afterChunkChange(EntityChunkChangeEvent.@NotNull After event) {
-        if (event.getEntity().level() instanceof ClientLevel level) update(event.getEntity(), level, true);
+        if (event.getEntity().level instanceof ClientLevel) update(event.getEntity(), (ClientLevel) event.getEntity().level, true);
     }
 
     @SubscribeEvent
     public static void beforeSectionChange(EntityChunkChangeEvent.Section.@NotNull Before event) {
-        if (event.getEntity().level() instanceof ClientLevel level) update(event.getEntity(), level, false);
+        if (event.getEntity().level instanceof ClientLevel) update(event.getEntity(), (ClientLevel) event.getEntity().level, false);
     }
 
     @SubscribeEvent
     public static void afterSectionChange(EntityChunkChangeEvent.Section.@NotNull After event) {
-        if (event.getEntity().level() instanceof ClientLevel level) update(event.getEntity(), level, true);
+        if (event.getEntity().level instanceof ClientLevel) update(event.getEntity(), (ClientLevel) event.getEntity().level, true);
     }
 
     @SubscribeEvent
@@ -196,7 +196,7 @@ public final class ClientEntityTracker {
     }
 
     @SubscribeEvent
-    public static void stop(ClientPlayerNetworkEvent.LoggingOut event) {
+    public static void stop(ClientPlayerNetworkEvent.LoggedOutEvent event) {
         INSTANCE.reset();
     }
 
@@ -213,7 +213,7 @@ public final class ClientEntityTracker {
             return filterable.clientFilter$matched();
         }
 
-        private static Object2ObjectMap<ResourceLocation, Predicate<Entity>> collectFilters() {
+        static Object2ObjectMap<ResourceLocation, Predicate<Entity>> collectFilters() {
             return ClientEntityTracker.INSTANCE.FILTERS;
         }
     }

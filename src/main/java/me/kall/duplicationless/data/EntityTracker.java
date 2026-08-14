@@ -7,7 +7,6 @@ import me.kall.duplicationless.Duplicationless;
 import me.kall.duplicationless.event.EntityChunkChangeEvent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -35,7 +34,7 @@ import java.util.function.Predicate;
 public final class EntityTracker {
     private static final Logger LOGGER = LogManager.getLogger(EntityTracker.class);
 
-    private static final AbstractEntityTracker<ServerLevel> INSTANCE = new AbstractEntityTracker<>() {
+    private static final AbstractEntityTracker<ServerLevel> INSTANCE = new AbstractEntityTracker<ServerLevel>() {
         @Override
         protected void assertThread(@NotNull ServerLevel level) {
             if (!level.getServer().isSameThread()) throw new UnsupportedOperationException("EntityTracker is only available on the server thread!");
@@ -161,33 +160,33 @@ public final class EntityTracker {
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void onJoin(@NotNull EntityJoinLevelEvent event) {
-        if (event.getLevel() instanceof ServerLevel level) update(event.getEntity(), level, true);
+    public static void onJoin(@NotNull EntityJoinWorldEvent event) {
+        if (event.getWorld() instanceof ServerLevel) update(event.getEntity(), (ServerLevel) event.getWorld(), true);
     }
 
     @SubscribeEvent
-    public static void onLeave(@NotNull EntityLeaveLevelEvent event) {
-        if (event.getLevel() instanceof ServerLevel level) update(event.getEntity(), level, false);
+    public static void onLeave(@NotNull EntityLeaveWorldEvent event) {
+        if (event.getWorld() instanceof ServerLevel) update(event.getEntity(), (ServerLevel) event.getWorld(), false);
     }
 
     @SubscribeEvent
     public static void beforeChunkChange(EntityChunkChangeEvent.@NotNull Before event) {
-        if (event.getEntity().level() instanceof ServerLevel level) update(event.getEntity(), level, false);
+        if (event.getEntity().level instanceof ServerLevel) update(event.getEntity(), (ServerLevel) event.getEntity().level, false);
     }
 
     @SubscribeEvent
     public static void afterChunkChange(EntityChunkChangeEvent.@NotNull After event) {
-        if (event.getEntity().level() instanceof ServerLevel level) update(event.getEntity(), level, true);
+        if (event.getEntity().level instanceof ServerLevel) update(event.getEntity(), (ServerLevel) event.getEntity().level, true);
     }
 
     @SubscribeEvent
     public static void beforeSectionChange(EntityChunkChangeEvent.Section.@NotNull Before event) {
-        if (event.getEntity().level() instanceof ServerLevel level) update(event.getEntity(), level, false);
+        if (event.getEntity().level instanceof ServerLevel) update(event.getEntity(), (ServerLevel) event.getEntity().level, false);
     }
 
     @SubscribeEvent
     public static void afterSectionChange(EntityChunkChangeEvent.Section.@NotNull After event) {
-        if (event.getEntity().level() instanceof ServerLevel level) update(event.getEntity(), level, true);
+        if (event.getEntity().level instanceof ServerLevel) update(event.getEntity(), (ServerLevel) event.getEntity().level, true);
     }
 
     @SubscribeEvent
@@ -196,7 +195,7 @@ public final class EntityTracker {
     }
 
     @SubscribeEvent
-    public static void stopServer(ServerStoppedEvent event) {
+    public static void stopServer(FMLServerStoppedEvent event) {
         INSTANCE.reset();
     }
 

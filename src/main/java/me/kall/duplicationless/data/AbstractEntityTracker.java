@@ -6,6 +6,7 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.*;
 import me.kall.duplicationless.Duplicationless;
 import me.kall.duplicationless.ext.RegistryEntry;
+import me.kall.duplicationless.util.Positions;
 import net.minecraft.core.SectionPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
@@ -29,8 +30,8 @@ public abstract class AbstractEntityTracker<L extends Level> {
     protected final Object2ObjectMap<ResourceLocation, Predicate<Entity>> FILTERS = new Object2ObjectOpenHashMap<>();
     protected final ConcurrentLinkedQueue<Runnable> UPDATE_TASKS = new ConcurrentLinkedQueue<>();
 
-    public static final ResourceLocation LIVING = ResourceLocation.fromNamespaceAndPath(Duplicationless.MOD_ID, "living_entity");
-    public static final ResourceLocation ENEMY = ResourceLocation.fromNamespaceAndPath(Duplicationless.MOD_ID, "enemy");
+    public static final ResourceLocation LIVING = new ResourceLocation(Duplicationless.MOD_ID, "living_entity");
+    public static final ResourceLocation ENEMY = new ResourceLocation(Duplicationless.MOD_ID, "enemy");
 
     public void registerFilter(ResourceLocation filterId, Predicate<Entity> filter) {
         if (FILTERS.containsKey(filterId)) LOGGER.error("Duplicate filter ID detected: {}. Overriding.", filterId);
@@ -93,7 +94,7 @@ public abstract class AbstractEntityTracker<L extends Level> {
             IntSet set = extractor.apply(storage);
             if (set != null) entities.addAll(set);
         }
-        return entities.isEmpty() ? IntSets.emptySet() : entities;
+        return entities.isEmpty() ? IntSets.EMPTY_SET : entities;
     }
 
     public void forEach(@NotNull L level, long chunkPos, Consumer<Entity> entityConsumer) {
@@ -114,7 +115,7 @@ public abstract class AbstractEntityTracker<L extends Level> {
         for (EntityStorage storage : chunkSections(level, chunkPos).values()) {
             IntSet set = extractor.apply(storage);
             if (set != null) {
-                IntIterator it = set.intIterator();
+                IntIterator it = set.iterator();
                 while (it.hasNext()) {
                     Entity entity = level.getEntity(it.nextInt());
                     if (entity != null) entityConsumer.accept(entity);
@@ -139,10 +140,10 @@ public abstract class AbstractEntityTracker<L extends Level> {
         assertThread(level);
 
         EntityStorage storage = chunkSections(level, chunkPos).get(sectionIndex);
-        if (storage == null || storage.isEmpty()) return IntSets.emptySet();
+        if (storage == null || storage.isEmpty()) return IntSets.EMPTY_SET;
 
         IntSet set = extractor.apply(storage);
-        return (set == null || set.isEmpty()) ? IntSets.emptySet() : IntSets.unmodifiable(set);
+        return (set == null || set.isEmpty()) ? IntSets.EMPTY_SET : IntSets.unmodifiable(set);
     }
 
     public void forEach(@NotNull L level, long chunkPos, int sectionIndex, Consumer<Entity> entityConsumer) {
@@ -166,7 +167,7 @@ public abstract class AbstractEntityTracker<L extends Level> {
         IntSet set = extractor.apply(storage);
         if (set == null || set.isEmpty()) return;
 
-        IntIterator it = set.intIterator();
+        IntIterator it = set.iterator();
         while (it.hasNext()) {
             Entity entity = level.getEntity(it.nextInt());
             if (entity != null) entityConsumer.accept(entity);
@@ -232,8 +233,8 @@ public abstract class AbstractEntityTracker<L extends Level> {
     }
 
     protected void update(@NotNull Entity entity, @NotNull L level, boolean add, @NotNull ObjectList<ResourceLocation> matchedFilters) {
-        final long chunkPos = entity.chunkPosition().toLong();
-        final int sectionIndex = SectionPos.blockToSectionCoord(entity.getY());
+        final long chunkPos = Positions.toChunk(entity.blockPosition());
+        final int sectionIndex = SectionPos.blockToSectionCoord(entity.blockPosition().getY());
         final ResourceLocation dim = level.dimension().location();
         final int id = entity.getId();
         final ResourceLocation entityType = RegistryEntry.get(entity.getType());
