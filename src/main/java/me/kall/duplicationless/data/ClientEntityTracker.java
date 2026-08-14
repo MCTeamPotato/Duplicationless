@@ -192,7 +192,7 @@ public final class ClientEntityTracker {
 
     @SubscribeEvent
     public static void taskUpdate(ClientTickEvent.Pre event) {
-         INSTANCE.drainUpdateTasks();
+        INSTANCE.drainUpdateTasks();
     }
 
     @SubscribeEvent
