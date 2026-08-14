@@ -7,21 +7,21 @@ import me.kall.duplicationless.Duplicationless;
 import me.kall.duplicationless.event.EntityChunkChangeEvent;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Enemy;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.EntityJoinLevelEvent;
-import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
-import net.minecraftforge.eventbus.api.Event;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.Event;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
+import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.ApiStatus;
@@ -31,7 +31,7 @@ import org.jetbrains.annotations.UnmodifiableView;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
-@Mod.EventBusSubscriber(modid = Duplicationless.MOD_ID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = Duplicationless.MOD_ID, value = Dist.CLIENT)
 public final class ClientEntityTracker {
     private static final Logger LOGGER = LogManager.getLogger(ClientEntityTracker.class);
 
@@ -42,17 +42,17 @@ public final class ClientEntityTracker {
         }
     };
 
-    public static final ResourceLocation LIVING = AbstractEntityTracker.LIVING;
-    public static final ResourceLocation ENEMY = AbstractEntityTracker.ENEMY;
+    public static final Identifier LIVING = AbstractEntityTracker.LIVING;
+    public static final Identifier ENEMY = AbstractEntityTracker.ENEMY;
 
     private ClientEntityTracker() {}
 
     public static final class ClientEntityFilterRegistryEvent extends Event {
-        public void register(ResourceLocation filterId, Predicate<Entity> filter) {
+        public void register(Identifier filterId, Predicate<Entity> filter) {
             INSTANCE.registerFilter(filterId, filter);
         }
 
-        public void register(ResourceLocation filterId, @NotNull Class<?> entityClass) {
+        public void register(Identifier filterId, @NotNull Class<?> entityClass) {
             INSTANCE.registerFilter(filterId, entityClass);
         }
     }
@@ -68,7 +68,7 @@ public final class ClientEntityTracker {
     }
 
     @Deprecated
-    public static @NotNull IntSet getEntities(@NotNull ClientLevel level, long chunkPos, ResourceLocation filter) {
+    public static @NotNull IntSet getEntities(@NotNull ClientLevel level, long chunkPos, Identifier filter) {
         return INSTANCE.getEntities(level, chunkPos, filter);
     }
 
@@ -80,7 +80,7 @@ public final class ClientEntityTracker {
         return INSTANCE.getEntityList(level, chunkPos, type);
     }
 
-    public static ObjectList<IntSet> getEntityList(@NotNull ClientLevel level, long chunkPos, ResourceLocation filter) {
+    public static ObjectList<IntSet> getEntityList(@NotNull ClientLevel level, long chunkPos, Identifier filter) {
         return INSTANCE.getEntityList(level, chunkPos, filter);
     }
 
@@ -92,7 +92,7 @@ public final class ClientEntityTracker {
         INSTANCE.forEach(level, chunkPos, type, consumer);
     }
 
-    public static void forEach(@NotNull ClientLevel level, long chunkPos, ResourceLocation filter, Consumer<Entity> consumer) {
+    public static void forEach(@NotNull ClientLevel level, long chunkPos, Identifier filter, Consumer<Entity> consumer) {
         INSTANCE.forEach(level, chunkPos, filter, consumer);
     }
 
@@ -104,7 +104,7 @@ public final class ClientEntityTracker {
         return INSTANCE.getEntities(level, chunkPos, sectionIndex, type);
     }
 
-    public static @NotNull @UnmodifiableView IntSet getEntities(@NotNull ClientLevel level, long chunkPos, int sectionIndex, ResourceLocation filter) {
+    public static @NotNull @UnmodifiableView IntSet getEntities(@NotNull ClientLevel level, long chunkPos, int sectionIndex, Identifier filter) {
         return INSTANCE.getEntities(level, chunkPos, sectionIndex, filter);
     }
 
@@ -116,7 +116,7 @@ public final class ClientEntityTracker {
         INSTANCE.forEach(level, chunkPos, sectionIndex, type, consumer);
     }
 
-    public static void forEach(@NotNull ClientLevel level, long chunkPos, int sectionIndex, ResourceLocation filter, Consumer<Entity> consumer) {
+    public static void forEach(@NotNull ClientLevel level, long chunkPos, int sectionIndex, Identifier filter, Consumer<Entity> consumer) {
         INSTANCE.forEach(level, chunkPos, sectionIndex, filter, consumer);
     }
 
@@ -128,7 +128,7 @@ public final class ClientEntityTracker {
         return INSTANCE.count(level, chunkPos, type);
     }
 
-    public static int count(@NotNull ClientLevel level, long chunkPos, ResourceLocation filter) {
+    public static int count(@NotNull ClientLevel level, long chunkPos, Identifier filter) {
         return INSTANCE.count(level, chunkPos, filter);
     }
 
@@ -140,7 +140,7 @@ public final class ClientEntityTracker {
         return INSTANCE.count(level, chunkPos, sectionIndex, type);
     }
 
-    public static int count(@NotNull ClientLevel level, long chunkPos, int sectionIndex, ResourceLocation filter) {
+    public static int count(@NotNull ClientLevel level, long chunkPos, int sectionIndex, Identifier filter) {
         return INSTANCE.count(level, chunkPos, sectionIndex, filter);
     }
 
@@ -150,7 +150,7 @@ public final class ClientEntityTracker {
 
     @SubscribeEvent
     public static void filterRegistry(ClientPlayerNetworkEvent.LoggingIn event) {
-        MinecraftForge.EVENT_BUS.post(new ClientEntityFilterRegistryEvent());
+        NeoForge.EVENT_BUS.post(new ClientEntityFilterRegistryEvent());
         LOGGER.info("Duplicationless Client Entity Tracker has initialized successfully.");
     }
 
@@ -191,8 +191,8 @@ public final class ClientEntityTracker {
     }
 
     @SubscribeEvent
-    public static void taskUpdate(TickEvent.@NotNull ClientTickEvent event) {
-        if (event.phase.equals(TickEvent.Phase.START)) INSTANCE.drainUpdateTasks();
+    public static void taskUpdate(ClientTickEvent.Pre event) {
+         INSTANCE.drainUpdateTasks();
     }
 
     @SubscribeEvent
@@ -203,17 +203,17 @@ public final class ClientEntityTracker {
     @ApiStatus.Internal
     @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     public interface ClientFilterable {
-        ObjectList<ResourceLocation> clientFilter$matched();
-        void clientFilter$initialize(Object2ObjectMap<ResourceLocation, Predicate<Entity>> filters);
+        ObjectList<Identifier> clientFilter$matched();
+        void clientFilter$initialize(Object2ObjectMap<Identifier, Predicate<Entity>> filters);
         boolean clientFilter$initialized();
 
-        static ObjectList<ResourceLocation> getMatched(Entity entity) {
+        static ObjectList<Identifier> getMatched(Entity entity) {
             ClientFilterable filterable = (ClientFilterable) entity;
             if (!filterable.clientFilter$initialized()) filterable.clientFilter$initialize(collectFilters());
             return filterable.clientFilter$matched();
         }
 
-        private static Object2ObjectMap<ResourceLocation, Predicate<Entity>> collectFilters() {
+        private static Object2ObjectMap<Identifier, Predicate<Entity>> collectFilters() {
             return ClientEntityTracker.INSTANCE.FILTERS;
         }
     }

@@ -7,7 +7,7 @@ import it.unimi.dsi.fastutil.objects.*;
 import me.kall.duplicationless.Duplicationless;
 import me.kall.duplicationless.ext.RegistryEntry;
 import net.minecraft.core.SectionPos;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.Level;
@@ -25,19 +25,19 @@ import java.util.function.Predicate;
 public abstract class AbstractEntityTracker<L extends Level> {
     protected static final Logger LOGGER = LogManager.getLogger(AbstractEntityTracker.class);
 
-    protected final Object2ObjectMap<ResourceLocation, Long2ObjectMap<Int2ObjectMap<EntityStorage>>> ENTITIES = new Object2ObjectOpenHashMap<>();
-    protected final Object2ObjectMap<ResourceLocation, Predicate<Entity>> FILTERS = new Object2ObjectOpenHashMap<>();
+    protected final Object2ObjectMap<Identifier, Long2ObjectMap<Int2ObjectMap<EntityStorage>>> ENTITIES = new Object2ObjectOpenHashMap<>();
+    protected final Object2ObjectMap<Identifier, Predicate<Entity>> FILTERS = new Object2ObjectOpenHashMap<>();
     protected final ConcurrentLinkedQueue<Runnable> UPDATE_TASKS = new ConcurrentLinkedQueue<>();
 
-    public static final ResourceLocation LIVING = ResourceLocation.fromNamespaceAndPath(Duplicationless.MOD_ID, "living_entity");
-    public static final ResourceLocation ENEMY = ResourceLocation.fromNamespaceAndPath(Duplicationless.MOD_ID, "enemy");
+    public static final Identifier LIVING = Identifier.fromNamespaceAndPath(Duplicationless.MOD_ID, "living_entity");
+    public static final Identifier ENEMY = Identifier.fromNamespaceAndPath(Duplicationless.MOD_ID, "enemy");
 
-    public void registerFilter(ResourceLocation filterId, Predicate<Entity> filter) {
+    public void registerFilter(Identifier filterId, Predicate<Entity> filter) {
         if (FILTERS.containsKey(filterId)) LOGGER.error("Duplicate filter ID detected: {}. Overriding.", filterId);
         FILTERS.put(filterId, filter);
     }
 
-    public void registerFilter(ResourceLocation filterId, @NotNull Class<?> entityClass) {
+    public void registerFilter(Identifier filterId, @NotNull Class<?> entityClass) {
         registerFilter(filterId, entityClass::isInstance);
     }
 
@@ -54,7 +54,7 @@ public abstract class AbstractEntityTracker<L extends Level> {
     }
 
     @Deprecated
-    public @NotNull IntSet getEntities(@NotNull L level, long chunkPos, ResourceLocation filter) {
+    public @NotNull IntSet getEntities(@NotNull L level, long chunkPos, Identifier filter) {
         return getInternal(level, chunkPos, s -> s.entitiesByFilter == null ? null : s.entitiesByFilter.get(filter));
     }
 
@@ -66,7 +66,7 @@ public abstract class AbstractEntityTracker<L extends Level> {
         return getEntityListInternal(level, chunkPos, s -> byType(s, type));
     }
 
-    public ObjectList<IntSet> getEntityList(@NotNull L level, long chunkPos, ResourceLocation filter) {
+    public ObjectList<IntSet> getEntityList(@NotNull L level, long chunkPos, Identifier filter) {
         return getEntityListInternal(level, chunkPos, s -> s.entitiesByFilter == null ? null : s.entitiesByFilter.get(filter));
     }
 
@@ -104,7 +104,7 @@ public abstract class AbstractEntityTracker<L extends Level> {
         forEachInternal(level, chunkPos, s -> byType(s, type), entityConsumer);
     }
 
-    public void forEach(@NotNull L level, long chunkPos, ResourceLocation filter, Consumer<Entity> entityConsumer) {
+    public void forEach(@NotNull L level, long chunkPos, Identifier filter, Consumer<Entity> entityConsumer) {
         forEachInternal(level, chunkPos, s -> s.entitiesByFilter == null ? null : s.entitiesByFilter.get(filter), entityConsumer);
     }
 
@@ -131,7 +131,7 @@ public abstract class AbstractEntityTracker<L extends Level> {
         return getInternal(level, chunkPos, sectionIndex, s -> byType(s, type));
     }
 
-    public @NotNull @UnmodifiableView IntSet getEntities(@NotNull L level, long chunkPos, int sectionIndex, ResourceLocation filter) {
+    public @NotNull @UnmodifiableView IntSet getEntities(@NotNull L level, long chunkPos, int sectionIndex, Identifier filter) {
         return getInternal(level, chunkPos, sectionIndex, s -> s.entitiesByFilter == null ? null : s.entitiesByFilter.get(filter));
     }
 
@@ -153,7 +153,7 @@ public abstract class AbstractEntityTracker<L extends Level> {
         forEachInternal(level, chunkPos, sectionIndex, s -> byType(s, type), entityConsumer);
     }
 
-    public void forEach(@NotNull L level, long chunkPos, int sectionIndex, ResourceLocation filter, Consumer<Entity> entityConsumer) {
+    public void forEach(@NotNull L level, long chunkPos, int sectionIndex, Identifier filter, Consumer<Entity> entityConsumer) {
         forEachInternal(level, chunkPos, sectionIndex, s -> s.entitiesByFilter == null ? null : s.entitiesByFilter.get(filter), entityConsumer);
     }
 
@@ -181,7 +181,7 @@ public abstract class AbstractEntityTracker<L extends Level> {
         return countInternal(level, chunkPos, s -> byType(s, type));
     }
 
-    public int count(@NotNull L level, long chunkPos, ResourceLocation filter) {
+    public int count(@NotNull L level, long chunkPos, Identifier filter) {
         return countInternal(level, chunkPos, s -> s.entitiesByFilter == null ? null : s.entitiesByFilter.get(filter));
     }
 
@@ -204,7 +204,7 @@ public abstract class AbstractEntityTracker<L extends Level> {
         return countInternal(level, chunkPos, sectionIndex, s -> byType(s, type));
     }
 
-    public int count(@NotNull L level, long chunkPos, int sectionIndex, ResourceLocation filter) {
+    public int count(@NotNull L level, long chunkPos, int sectionIndex, Identifier filter) {
         return countInternal(level, chunkPos, sectionIndex, s -> s.entitiesByFilter == null ? null : s.entitiesByFilter.get(filter));
     }
 
@@ -219,24 +219,24 @@ public abstract class AbstractEntityTracker<L extends Level> {
     }
 
     private static @Nullable IntSet byType(EntityStorage storage, EntityType<?> type) {
-        ResourceLocation id = RegistryEntry.get(type);
+        Identifier id = RegistryEntry.get(type);
         if (id.equals(RegistryEntry.NONE) || storage.entitiesByType == null) return null;
         return storage.entitiesByType.get(id);
     }
 
     private @NotNull Int2ObjectMap<EntityStorage> chunkSections(@NotNull L level, long chunkPos) {
-        Long2ObjectMap<Int2ObjectMap<EntityStorage>> chunks = ENTITIES.get(level.dimension().location());
+        Long2ObjectMap<Int2ObjectMap<EntityStorage>> chunks = ENTITIES.get(level.dimension().identifier());
         if (chunks == null || chunks.isEmpty()) return Int2ObjectMaps.emptyMap();
         Int2ObjectMap<EntityStorage> sections = chunks.get(chunkPos);
         return (sections == null || sections.isEmpty()) ? Int2ObjectMaps.emptyMap() : sections;
     }
 
-    protected void update(@NotNull Entity entity, @NotNull L level, boolean add, @NotNull ObjectList<ResourceLocation> matchedFilters) {
+    protected void update(@NotNull Entity entity, @NotNull L level, boolean add, @NotNull ObjectList<Identifier> matchedFilters) {
         final long chunkPos = entity.chunkPosition().toLong();
         final int sectionIndex = SectionPos.blockToSectionCoord(entity.getY());
-        final ResourceLocation dim = level.dimension().location();
+        final Identifier dim = level.dimension().identifier();
         final int id = entity.getId();
-        final ResourceLocation entityType = RegistryEntry.get(entity.getType());
+        final Identifier entityType = RegistryEntry.get(entity.getType());
         final boolean isNone = entityType.equals(RegistryEntry.NONE);
 
         UPDATE_TASKS.add(() -> {
@@ -272,14 +272,14 @@ public abstract class AbstractEntityTracker<L extends Level> {
 
     protected static final class EntityStorage {
         @Nullable IntSet entities;
-        @Nullable Object2ObjectMap<ResourceLocation, IntSet> entitiesByType;
-        @Nullable Object2ObjectMap<ResourceLocation, IntSet> entitiesByFilter;
+        @Nullable Object2ObjectMap<Identifier, IntSet> entitiesByType;
+        @Nullable Object2ObjectMap<Identifier, IntSet> entitiesByFilter;
 
         boolean isEmpty() {
             return entities == null && entitiesByType == null && entitiesByFilter == null;
         }
 
-        void add(int entityId, ResourceLocation type, boolean isNone, @Nullable ObjectList<ResourceLocation> matched) {
+        void add(int entityId, Identifier type, boolean isNone, @Nullable ObjectList<Identifier> matched) {
             updateEntities(entityId, true);
 
             if (!isNone) {
@@ -289,11 +289,11 @@ public abstract class AbstractEntityTracker<L extends Level> {
 
             if (matched != null && !matched.isEmpty()) {
                 if (entitiesByFilter == null) entitiesByFilter = new Object2ObjectOpenHashMap<>();
-                for (ResourceLocation filterId : matched) update(entitiesByFilter, filterId, entityId, true);
+                for (Identifier filterId : matched) update(entitiesByFilter, filterId, entityId, true);
             }
         }
 
-        void remove(int entityId, ResourceLocation type, boolean isNone, @Nullable ObjectList<ResourceLocation> matched) {
+        void remove(int entityId, Identifier type, boolean isNone, @Nullable ObjectList<Identifier> matched) {
             updateEntities(entityId, false);
 
             if (!isNone && entitiesByType != null) {
@@ -302,7 +302,7 @@ public abstract class AbstractEntityTracker<L extends Level> {
             }
 
             if (matched != null && !matched.isEmpty() && entitiesByFilter != null) {
-                for (ResourceLocation filterId : matched) update(entitiesByFilter, filterId, entityId, false);
+                for (Identifier filterId : matched) update(entitiesByFilter, filterId, entityId, false);
                 if (entitiesByFilter.isEmpty()) entitiesByFilter = null;
             }
         }
