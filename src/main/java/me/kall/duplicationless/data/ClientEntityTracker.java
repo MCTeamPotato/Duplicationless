@@ -12,16 +12,16 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Enemy;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.EntityJoinLevelEvent;
-import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
-import net.minecraftforge.eventbus.api.Event;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.Event;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
+import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.ApiStatus;
@@ -31,7 +31,7 @@ import org.jetbrains.annotations.UnmodifiableView;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
-@Mod.EventBusSubscriber(modid = Duplicationless.MOD_ID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = Duplicationless.MOD_ID, value = Dist.CLIENT)
 public final class ClientEntityTracker {
     private static final Logger LOGGER = LogManager.getLogger(ClientEntityTracker.class);
 
@@ -150,7 +150,7 @@ public final class ClientEntityTracker {
 
     @SubscribeEvent
     public static void filterRegistry(ClientPlayerNetworkEvent.LoggingIn event) {
-        MinecraftForge.EVENT_BUS.post(new ClientEntityFilterRegistryEvent());
+        NeoForge.EVENT_BUS.post(new ClientEntityFilterRegistryEvent());
         LOGGER.info("Duplicationless Client Entity Tracker has initialized successfully.");
     }
 
@@ -191,8 +191,8 @@ public final class ClientEntityTracker {
     }
 
     @SubscribeEvent
-    public static void taskUpdate(TickEvent.@NotNull ClientTickEvent event) {
-        if (event.phase.equals(TickEvent.Phase.START)) INSTANCE.drainUpdateTasks();
+    public static void taskUpdate(ClientTickEvent.Pre event) {
+        INSTANCE.drainUpdateTasks();
     }
 
     @SubscribeEvent
